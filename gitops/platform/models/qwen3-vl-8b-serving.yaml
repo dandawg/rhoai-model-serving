@@ -15,7 +15,7 @@ spec:
     path: platform/models/serving/qwen3-vl-8b/pvc
   destination:
     server: https://kubernetes.default.svc
-    namespace: model-downloads
+    namespace: demo
   syncPolicy:
     automated:
       selfHeal: true

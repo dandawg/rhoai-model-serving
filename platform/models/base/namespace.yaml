@@ -7,6 +7,6 @@ metadata:
     kubernetes.io/metadata.name: demo
     opendatahub.io/dashboard: "true"
   annotations:
-    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-wave: "-2"
     openshift.io/display-name: "Demo"
     openshift.io/requester: admin
