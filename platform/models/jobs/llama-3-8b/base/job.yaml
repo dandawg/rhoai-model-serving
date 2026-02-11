@@ -1,0 +1,96 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: download-llama-3-8b
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: llama-3-8b-downloader
+    app.kubernetes.io/part-of: rhoai-demos
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  backoffLimit: 3
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: llama-3-8b-downloader
+    spec:
+      serviceAccountName: model-downloader
+      restartPolicy: OnFailure
+      containers:
+        - name: downloader
+          image: python:3.11-slim
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "Installing HuggingFace CLI..."
+              pip install --no-cache-dir huggingface_hub
+              
+              echo "Model: ${MODEL_ID}"
+              echo "Target: ${STORAGE_PATH}"
+              echo ""
+              echo "NOTE: Llama 3 requires accepting the license on HuggingFace"
+              echo "Visit: https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct"
+              
+              # Token is required for Llama models
+              if [ ! -f /secrets/huggingface/token ]; then
+                echo "ERROR: HuggingFace token is required for Llama models"
+                exit 1
+              fi
+              
+              export HUGGING_FACE_HUB_TOKEN=$(cat /secrets/huggingface/token)
+              
+              echo "Starting model download..."
+              python3 - <<EOF
+              from huggingface_hub import snapshot_download
+              import os
+              
+              model_id = os.environ.get('MODEL_ID')
+              storage_path = os.environ.get('STORAGE_PATH')
+              token = os.environ.get('HUGGING_FACE_HUB_TOKEN')
+              
+              print(f"Downloading {model_id} to {storage_path}")
+              snapshot_download(
+                  repo_id=model_id,
+                  local_dir=storage_path,
+                  local_dir_use_symlinks=False,
+                  token=token
+              )
+              print("Download completed successfully!")
+              EOF
+              
+              echo "Verifying download..."
+              ls -lah ${STORAGE_PATH}
+              
+              echo "Model download complete!"
+          env:
+            - name: MODEL_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: llama-3-8b-metadata
+                  key: model-id
+            - name: STORAGE_PATH
+              value: "/models/llama-3-8b-instruct"
+          volumeMounts:
+            - name: model-storage
+              mountPath: /models
+            - name: huggingface-token
+              mountPath: /secrets/huggingface
+              readOnly: true
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+      volumes:
+        - name: model-storage
+          emptyDir: {}
+        - name: huggingface-token
+          secret:
+            secretName: huggingface-token

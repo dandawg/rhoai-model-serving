@@ -1,0 +1,55 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  annotations:
+    serving.kserve.io/deploymentMode: RawDeployment
+    serving.kserve.io/stop: 'true'
+    openshift.io/description: 'Qwen3-VL-Embedding-2B compact multimodal embedding model for vision and language tasks'
+    openshift.io/display-name: qwen3-vl-embedding-2b
+    security.opendatahub.io/enable-auth: 'true'
+    opendatahub.io/model-type: generative
+    argocd.argoproj.io/sync-wave: "5"
+  name: qwen3-vl-embedding-2b
+  namespace: demo
+  finalizers:
+    - inferenceservice.finalizers
+    - odh.inferenceservice.finalizers
+  labels:
+    networking.kserve.io/visibility: exposed
+    opendatahub.io/dashboard: 'true'
+    opendatahub.io/genai-asset: 'true'
+    app.kubernetes.io/name: qwen3-vl-embedding-2b
+    app.kubernetes.io/part-of: rhoai-demos
+spec:
+  predictor:
+    automountServiceAccountToken: false
+    maxReplicas: 1
+    minReplicas: 1
+    model:
+      args:
+        # 2B embedding model is very efficient
+        - '--max-model-len=32000'
+        - '--max_num_batched_tokens=2048'
+        - '--gpu_memory_utilization=0.90'
+        - '--limit-mm-per-prompt.video=0'
+        - '--limit-mm-per-prompt.image=4'
+      modelFormat:
+        name: vLLM
+      name: ''
+      resources:
+        limits:
+          cpu: '3'
+          memory: 12Gi
+          nvidia.com/gpu: '1'
+        requests:
+          cpu: '2'
+          memory: 8Gi
+          nvidia.com/gpu: '1'
+      runtime: qwen3-vl-embedding-2b-runtime
+      storageUri: pvc://qwen3-vl-embedding-2b-model-storage/Qwen3-VL-Embedding-2B
+    nodeSelector:
+      node.kubernetes.io/instance-type: g4dn.xlarge
+    tolerations:
+      - effect: NoSchedule
+        key: nvidia.com/gpu
+        operator: Exists

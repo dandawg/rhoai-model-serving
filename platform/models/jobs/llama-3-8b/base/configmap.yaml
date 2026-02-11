@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llama-3-8b-metadata
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: llama-3-8b
+    app.kubernetes.io/part-of: rhoai-demos
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  model-id: "meta-llama/Meta-Llama-3-8B-Instruct"
+  model-name: "llama-3-8b-instruct"
+  model-size: "16GB"
+  description: "Meta Llama 3 8B Instruct - Instruction-tuned language model"
+  huggingface-url: "https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct"
+  notes: "Requires accepting license on HuggingFace before download"

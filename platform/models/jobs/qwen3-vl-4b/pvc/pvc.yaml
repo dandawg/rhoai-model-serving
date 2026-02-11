@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: qwen3-vl-4b-model-storage
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: qwen3-vl-4b
+    app.kubernetes.io/part-of: rhoai-demos
+    opendatahub.io/dashboard: 'true'
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

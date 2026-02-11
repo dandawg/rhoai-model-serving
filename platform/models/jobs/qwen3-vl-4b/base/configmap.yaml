@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qwen3-vl-4b-metadata
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: qwen3-vl-4b
+    app.kubernetes.io/part-of: rhoai-demos
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  model-id: "Qwen/Qwen3-VL-4B-Instruct"
+  model-name: "qwen3-vl-4b-instruct"
+  model-size: "8.5GB"
+  description: "Qwen3 VL 4B Instruct - Compact vision-language model"
+  huggingface-url: "https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct"
+  notes: "Compact vision-language model with multimodal capabilities for efficient inference"

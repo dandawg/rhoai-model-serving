@@ -1,0 +1,58 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  annotations:
+    serving.kserve.io/deploymentMode: RawDeployment
+    serving.kserve.io/stop: 'true'
+    openshift.io/description: 'Qwen3-VL-4B compact multimodal model for vision and language tasks'
+    openshift.io/display-name: qwen3-vl-4b
+    opendatahub.io/model-type: generative
+    security.opendatahub.io/enable-auth: 'true'
+    argocd.argoproj.io/sync-wave: "5"
+  name: qwen3-vl-4b
+  namespace: demo
+  finalizers:
+    - inferenceservice.finalizers
+    - odh.inferenceservice.finalizers
+  labels:
+    networking.kserve.io/visibility: exposed
+    opendatahub.io/dashboard: 'true'
+    opendatahub.io/genai-asset: 'true'
+    app.kubernetes.io/name: qwen3-vl-4b
+    app.kubernetes.io/part-of: rhoai-demos
+spec:
+  predictor:
+    automountServiceAccountToken: false
+    maxReplicas: 1
+    minReplicas: 1
+    model:
+      args:
+        # 4B model is more efficient, can use higher limits
+        - '--max-model-len=50000'
+        - '--max_num_batched_tokens=4096'
+        - '--gpu_memory_utilization=0.95'
+        - '--limit-mm-per-prompt.video=0'
+        - '--limit-mm-per-prompt.image=8'
+        - '--enable-auto-tool-choice'
+        - '--tool-call-parser=hermes'  # openai, hermes
+        # - '--swap-space=4'
+      modelFormat:
+        name: vLLM
+      name: ''
+      resources:
+        limits:
+          cpu: '2'
+          memory: 16Gi
+          nvidia.com/gpu: '1'
+        requests:
+          cpu: '2'
+          memory: 16Gi
+          nvidia.com/gpu: '1'
+      runtime: qwen3-vl-4b-runtime
+      storageUri: pvc://qwen3-vl-4b-model-storage/Qwen3-VL-4B-Instruct
+    nodeSelector:
+      node.kubernetes.io/instance-type: g4dn.xlarge
+    tolerations:
+      - effect: NoSchedule
+        key: nvidia.com/gpu
+        operator: Exists

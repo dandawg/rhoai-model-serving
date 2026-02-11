@@ -1,0 +1,38 @@
+apiVersion: infrastructure.opendatahub.io/v1
+kind: HardwareProfile
+metadata:
+  name: g4dn-xlarge
+  namespace: redhat-ods-applications
+  annotations:
+    opendatahub.io/dashboard-feature-visibility: '["model-serving"]'
+    opendatahub.io/disabled: 'false'
+    opendatahub.io/display-name: 'AWS g4dn.xlarge (NVIDIA T4)'
+spec:
+  identifiers:
+    - defaultCount: 4
+      displayName: CPU
+      identifier: cpu
+      maxCount: 4
+      minCount: 1
+      resourceType: CPU
+    - defaultCount: 16Gi
+      displayName: Memory
+      identifier: memory
+      maxCount: 16Gi
+      minCount: 8Gi
+      resourceType: Memory
+    - defaultCount: 1
+      displayName: NVIDIA T4 GPU
+      identifier: nvidia.com/gpu
+      maxCount: 1
+      minCount: 1
+      resourceType: Accelerator
+  scheduling:
+    node:
+      nodeSelector:
+        node.kubernetes.io/instance-type: g4dn.xlarge
+      tolerations:
+        - effect: NoSchedule
+          key: nvidia.com/gpu
+          operator: Exists
+    type: Node

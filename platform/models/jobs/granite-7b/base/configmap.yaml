@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: granite-7b-metadata
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: granite-7b
+    app.kubernetes.io/part-of: rhoai-demos
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  model-id: "ibm-granite/granite-7b-instruct"
+  model-name: "granite-7b-instruct"
+  model-size: "14GB"
+  description: "IBM Granite 7B Instruct - Instruction-tuned language model"
+  huggingface-url: "https://huggingface.co/ibm-granite/granite-7b-instruct"

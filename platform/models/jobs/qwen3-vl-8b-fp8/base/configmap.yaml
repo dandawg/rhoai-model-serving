@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qwen3-vl-8b-fp8-metadata
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: qwen3-vl-8b-fp8
+    app.kubernetes.io/part-of: rhoai-demos
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  model-id: "Qwen/Qwen3-VL-8B-Instruct-FP8"
+  model-name: "qwen3-vl-8b-instruct-fp8"
+  model-size: "10.6GB"
+  description: "Qwen3 VL 8B Instruct FP8 - Vision-Language model with 8-bit quantization"
+  huggingface-url: "https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-FP8"
+  notes: "FP8 quantized vision-language model with multimodal capabilities for improved performance"

@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: model-qwen3-vl-4b-serving
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/name: qwen3-vl-4b-serving
+    app.kubernetes.io/part-of: rhoai-demos
+    app.kubernetes.io/component: platform-model-serving
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/dandawg/rhoai-model-serving.git
+    targetRevision: main
+    path: platform/models/serving/qwen3-vl-4b/pvc
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: model-downloads
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: "serving.kserve.io"
+      kind: InferenceService
+      jsonPointers:
+        - /metadata/annotations
+        - /metadata/labels
+        - /spec
+        - /status

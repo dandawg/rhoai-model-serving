@@ -1,0 +1,99 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: download-qwen3-vl-4b
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: qwen3-vl-4b-downloader
+    app.kubernetes.io/part-of: rhoai-demos
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  backoffLimit: 3
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: qwen3-vl-4b-downloader
+    spec:
+      serviceAccountName: model-downloader
+      restartPolicy: OnFailure
+      containers:
+        - name: downloader
+          image: registry.redhat.io/ubi9/python-311:9.7
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "Installing HuggingFace CLI..."
+              pip install --no-cache-dir huggingface_hub
+              
+              echo "Model: ${MODEL_ID}"
+              echo "Target: ${STORAGE_PATH}"
+              echo ""              
+              # Token is optional for public models but recommended
+              if [ -f /secrets/huggingface/token ]; then
+                export HUGGING_FACE_HUB_TOKEN=$(cat /secrets/huggingface/token)
+                echo "Using HuggingFace token for authentication"
+              else
+                echo "WARNING: No HuggingFace token found - download may fail for gated models"
+              fi
+              
+              echo "Starting model download..."
+              python3 - <<EOF
+              from huggingface_hub import snapshot_download
+              import os
+              
+              model_id = os.environ.get('MODEL_ID')
+              storage_path = os.environ.get('STORAGE_PATH')
+              token = os.environ.get('HUGGING_FACE_HUB_TOKEN')
+              
+              print(f"Downloading {model_id} to {storage_path}")
+              snapshot_download(
+                  repo_id=model_id,
+                  local_dir=storage_path,
+                  local_dir_use_symlinks=False,
+                  token=token if token else None
+              )
+              print("Download completed successfully!")
+              EOF
+              
+              echo "Verifying download..."
+              ls -lah ${STORAGE_PATH}
+              
+              echo "Model download complete!"
+          env:
+            - name: MODEL_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: qwen3-vl-4b-metadata
+                  key: model-id
+            - name: STORAGE_PATH
+              value: "/models/Qwen3-VL-4B-Instruct"
+            - name: HUGGINGFACE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: qwen3-vl-4b-metadata
+                  key: huggingface-url
+          volumeMounts:
+            - name: model-storage
+              mountPath: /models
+            - name: huggingface-token
+              mountPath: /secrets/huggingface
+              readOnly: true
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+      volumes:
+        - name: model-storage
+          emptyDir: {}
+        - name: huggingface-token
+          secret:
+            secretName: huggingface-token
+            optional: true

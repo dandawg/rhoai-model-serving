@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: demo
+
+resources:
+  # Shared base resources (namespace, serviceaccount, role)
+  - ../../../base
+  # Job-specific base (configmap, job)
+  - ../base
+  # PVC for this variant
+  - pvc.yaml
+
+patches:
+  - target:
+      kind: Job
+      name: download-qwen3-vl-4b
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/volumes/0
+        value:
+          name: model-storage
+          persistentVolumeClaim:
+            claimName: qwen3-vl-4b-model-storage

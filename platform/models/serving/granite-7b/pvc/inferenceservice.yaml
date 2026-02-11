@@ -1,0 +1,46 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  annotations:
+    serving.kserve.io/deploymentMode: RawDeployment
+    serving.kserve.io/stop: 'false'
+    openshift.io/description: 'IBM Granite 7B instruction model'
+    openshift.io/display-name: granite-7b
+    argocd.argoproj.io/sync-wave: "5"
+  name: granite-7b
+  namespace: demo
+  finalizers:
+    - inferenceservice.finalizers
+    - odh.inferenceservice.finalizers
+  labels:
+    networking.kserve.io/visibility: exposed
+    opendatahub.io/dashboard: 'true'
+    opendatahub.io/genai-asset: 'true'
+    app.kubernetes.io/name: granite-7b
+    app.kubernetes.io/part-of: rhoai-demos
+spec:
+  predictor:
+    automountServiceAccountToken: false
+    maxReplicas: 1
+    minReplicas: 1
+    model:
+      modelFormat:
+        name: vLLM
+      name: ''
+      resources:
+        limits:
+          cpu: '2'
+          memory: 20Gi
+          nvidia.com/gpu: '1'
+        requests:
+          cpu: '2'
+          memory: 20Gi
+          nvidia.com/gpu: '1'
+      runtime: granite-7b-runtime
+      storageUri: pvc://granite-7b-model-storage/granite-7b-instruct
+    nodeSelector:
+      node.kubernetes.io/instance-type: g4dn.xlarge
+    tolerations:
+      - effect: NoSchedule
+        key: nvidia.com/gpu
+        operator: Exists

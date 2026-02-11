@@ -1,0 +1,43 @@
+# Secrets and credentials
+*.secret
+*.token
+secrets/
+.env
+.env.*
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+venv/
+env/
+ENV/
+
+# Kustomize build output
+kustomization-build/
+
+# Temporary files
+*.tmp
+*.bak
+*.log

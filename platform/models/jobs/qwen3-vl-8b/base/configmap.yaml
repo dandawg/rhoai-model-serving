@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qwen3-vl-8b-metadata
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: qwen3-vl-8b
+    app.kubernetes.io/part-of: rhoai-demos
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  model-id: "Qwen/Qwen2.5-VL-7B-Instruct"
+  model-name: "qwen3-vl-8b-instruct"
+  model-size: "17.5GB"
+  description: "Qwen3 VL 8B Instruct - Vision-Language model"
+  huggingface-url: "https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct"
+  notes: "Vision-language model with multimodal capabilities"

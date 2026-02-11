@@ -1,0 +1,69 @@
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  annotations:
+    openshift.io/description: 'vLLM Runtime for Qwen3-VL-Embedding-2B multimodal embedding model'
+    openshift.io/display-name: vLLM Runtime - Qwen3-VL-Embedding-2B
+    opendatahub.io/dashboard: 'true'
+    argocd.argoproj.io/sync-wave: "3"
+  name: qwen3-vl-embedding-2b-runtime
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: qwen3-vl-embedding-2b
+    app.kubernetes.io/part-of: rhoai-demos
+    opendatahub.io/dashboard: 'true'
+spec:
+  containers:
+    - args:
+        - '--port=8080'
+        - '--model=/mnt/models'
+        - '--served-model-name={{.Name}}'
+        - '--dtype=auto'
+        - '--max-model-len=32000'
+      command:
+        - python
+        - '-m'
+        - vllm.entrypoints.openai.api_server
+      env:
+        - name: HF_HOME
+          value: /tmp/hf_home
+      image: 'registry.redhat.io/rhaiis/vllm-cuda-rhel9@sha256:ad756c01ec99a99cc7d93401c41b8d92ca96fb1ab7c5262919d818f2be4f3768'
+      name: kserve-container
+      ports:
+        - containerPort: 8080
+          protocol: TCP
+      startupProbe:
+        httpGet:
+          path: /health
+          port: 8080
+        initialDelaySeconds: 60
+        periodSeconds: 30
+        failureThreshold: 80
+        timeoutSeconds: 10
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: 8080
+        periodSeconds: 30
+        timeoutSeconds: 5
+        failureThreshold: 3
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: 8080
+        periodSeconds: 100
+        timeoutSeconds: 5
+        failureThreshold: 3
+      resources:
+        limits:
+          cpu: '4'
+          memory: 16Gi
+          nvidia.com/gpu: '1'
+        requests:
+          cpu: '2'
+          memory: 8Gi
+          nvidia.com/gpu: '1'
+  multiModel: false
+  supportedModelFormats:
+    - autoSelect: true
+      name: vLLM

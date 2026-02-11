@@ -1,0 +1,38 @@
+apiVersion: infrastructure.opendatahub.io/v1
+kind: HardwareProfile
+metadata:
+  name: g6-4xlarge
+  namespace: redhat-ods-applications
+  annotations:
+    opendatahub.io/dashboard-feature-visibility: '["model-serving"]'
+    opendatahub.io/disabled: 'false'
+    opendatahub.io/display-name: 'AWS g6.4xlarge (NVIDIA L4)'
+spec:
+  identifiers:
+    - defaultCount: 16
+      displayName: CPU
+      identifier: cpu
+      maxCount: 16
+      minCount: 1
+      resourceType: CPU
+    - defaultCount: 64Gi
+      displayName: Memory
+      identifier: memory
+      maxCount: 64Gi
+      minCount: 32Gi
+      resourceType: Memory
+    - defaultCount: 1
+      displayName: NVIDIA L4 GPU
+      identifier: nvidia.com/gpu
+      maxCount: 1
+      minCount: 1
+      resourceType: Accelerator
+  scheduling:
+    node:
+      nodeSelector:
+        node.kubernetes.io/instance-type: g6.4xlarge
+      tolerations:
+        - effect: NoSchedule
+          key: nvidia.com/gpu
+          operator: Exists
+    type: Node

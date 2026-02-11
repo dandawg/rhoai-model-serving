@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qwen3-vl-embedding-2b-metadata
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: qwen3-vl-embedding-2b
+    app.kubernetes.io/part-of: rhoai-demos
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  model-id: "Qwen/Qwen3-VL-Embedding-2B"
+  model-name: "qwen3-vl-embedding-2b"
+  model-size: "4.5GB"
+  description: "Qwen3 VL Embedding 2B - Compact vision-language embedding model"
+  huggingface-url: "https://huggingface.co/Qwen/Qwen3-VL-Embedding-2B"
+  notes: "Specialized embedding model for vision-language tasks with efficient 2B parameter design"

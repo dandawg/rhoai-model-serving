@@ -1,0 +1,126 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: demo
+
+resources:
+  # Shared base resources (namespace, serviceaccount, role)
+  - ../../../base
+  # Job-specific base (configmap, job)
+  - ../base
+
+patches:
+  - target:
+      kind: Job
+      name: download-granite-7b
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: python:3.11-slim
+      - op: replace
+        path: /spec/template/spec/containers/0/command
+        value:
+          - /bin/bash
+          - -c
+          - |
+            set -e
+            echo "Installing dependencies..."
+            pip install --no-cache-dir huggingface_hub boto3
+            
+            echo "Model: ${MODEL_ID}"
+            echo "MinIO Endpoint: ${MINIO_ENDPOINT}"
+            echo "Bucket: ${MINIO_BUCKET}"
+            
+            # Download to local first
+            if [ -f /secrets/huggingface/token ]; then
+              export HUGGING_FACE_HUB_TOKEN=$(cat /secrets/huggingface/token)
+            fi
+            
+            python3 - <<EOF
+            from huggingface_hub import snapshot_download
+            import boto3
+            import os
+            from pathlib import Path
+            
+            # Download model locally first
+            model_id = os.environ.get('MODEL_ID')
+            local_path = '/tmp/model'
+            token = os.environ.get('HUGGING_FACE_HUB_TOKEN', None)
+            
+            print(f"Downloading {model_id} to {local_path}")
+            snapshot_download(
+                repo_id=model_id,
+                local_dir=local_path,
+                local_dir_use_symlinks=False,
+                token=token
+            )
+            
+            # Upload to MinIO
+            print("Uploading to MinIO...")
+            s3_client = boto3.client(
+                's3',
+                endpoint_url=f"http://{os.environ['MINIO_ENDPOINT']}",
+                aws_access_key_id=os.environ['MINIO_ACCESS_KEY'],
+                aws_secret_access_key=os.environ['MINIO_SECRET_KEY']
+            )
+            
+            bucket = os.environ['MINIO_BUCKET']
+            model_name = os.environ.get('MODEL_NAME', 'granite-7b-instruct')
+            
+            # Create bucket if not exists
+            try:
+                s3_client.head_bucket(Bucket=bucket)
+            except:
+                s3_client.create_bucket(Bucket=bucket)
+            
+            # Upload all files
+            for file_path in Path(local_path).rglob('*'):
+                if file_path.is_file():
+                    key = f"{model_name}/{file_path.relative_to(local_path)}"
+                    print(f"Uploading {file_path} to s3://{bucket}/{key}")
+                    s3_client.upload_file(str(file_path), bucket, key)
+            
+            print("Upload completed successfully!")
+            EOF
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: MINIO_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: endpoint
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: accessKey
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: secretKey
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: MINIO_BUCKET
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: bucket
+              optional: true
+          # Default to "models" if not specified
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: MODEL_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: granite-7b-metadata
+              key: model-name
