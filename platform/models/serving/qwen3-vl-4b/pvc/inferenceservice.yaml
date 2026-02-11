@@ -7,6 +7,8 @@ metadata:
     openshift.io/description: 'Qwen3-VL-4B compact multimodal model for vision and language tasks'
     openshift.io/display-name: qwen3-vl-4b
     opendatahub.io/model-type: generative
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    opendatahub.io/hardware-profile-name: g6-4xlarge
     security.opendatahub.io/enable-auth: 'true'
     argocd.argoproj.io/sync-wave: "5"
   name: qwen3-vl-4b

@@ -8,6 +8,8 @@ metadata:
     openshift.io/display-name: qwen3-vl-embedding-2b
     security.opendatahub.io/enable-auth: 'true'
     opendatahub.io/model-type: generative
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    opendatahub.io/hardware-profile-name: g4dn-xlarge
     argocd.argoproj.io/sync-wave: "5"
   name: qwen3-vl-embedding-2b
   namespace: demo
