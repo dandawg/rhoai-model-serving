@@ -9,17 +9,17 @@ metadata:
     opendatahub.io/display-name: 'AWS g4dn.xlarge (NVIDIA T4)'
 spec:
   identifiers:
-    - defaultCount: 4
+    - defaultCount: 2
       displayName: CPU
       identifier: cpu
-      maxCount: 4
+      maxCount: 3
       minCount: 1
       resourceType: CPU
-    - defaultCount: 16Gi
+    - defaultCount: 6Gi
       displayName: Memory
       identifier: memory
-      maxCount: 16Gi
-      minCount: 8Gi
+      maxCount: 14Gi
+      minCount: 4Gi
       resourceType: Memory
     - defaultCount: 1
       displayName: NVIDIA T4 GPU

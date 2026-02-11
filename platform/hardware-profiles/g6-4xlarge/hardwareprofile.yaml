@@ -9,17 +9,17 @@ metadata:
     opendatahub.io/display-name: 'AWS g6.4xlarge (NVIDIA L4)'
 spec:
   identifiers:
-    - defaultCount: 16
+    - defaultCount: 4
       displayName: CPU
       identifier: cpu
-      maxCount: 16
-      minCount: 1
+      maxCount: 12
+      minCount: 2
       resourceType: CPU
-    - defaultCount: 64Gi
+    - defaultCount: 28Gi
       displayName: Memory
       identifier: memory
-      maxCount: 64Gi
-      minCount: 32Gi
+      maxCount: 58Gi
+      minCount: 24Gi
       resourceType: Memory
     - defaultCount: 1
       displayName: NVIDIA L4 GPU
