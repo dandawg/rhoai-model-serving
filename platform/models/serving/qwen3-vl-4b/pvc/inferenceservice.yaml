@@ -52,6 +52,7 @@ spec:
       storageUri: pvc://qwen3-vl-4b-model-storage/Qwen3-VL-4B-Instruct
     nodeSelector:
       node.kubernetes.io/instance-type: g6.4xlarge
+    priority: 10
     tolerations:
       - effect: NoSchedule
         key: nvidia.com/gpu

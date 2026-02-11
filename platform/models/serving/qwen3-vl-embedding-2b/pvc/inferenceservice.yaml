@@ -49,6 +49,7 @@ spec:
       storageUri: pvc://qwen3-vl-embedding-2b-model-storage/Qwen3-VL-Embedding-2B
     nodeSelector:
       node.kubernetes.io/instance-type: g4dn.xlarge
+    priority: 10
     tolerations:
       - effect: NoSchedule
         key: nvidia.com/gpu
