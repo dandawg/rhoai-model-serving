@@ -4,7 +4,16 @@ metadata:
   annotations:
     openshift.io/description: 'vLLM Runtime for Qwen3-VL-Embedding-2B multimodal embedding model'
     openshift.io/display-name: vLLM Runtime - Qwen3-VL-Embedding-2B
+    opendatahub.io/apiProtocol: REST
+    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
+    opendatahub.io/runtime-version: v0.11.0
+    opendatahub.io/serving-runtime-scope: namespace
+    opendatahub.io/template-display-name: vLLM NVIDIA GPU ServingRuntime for KServe
+    opendatahub.io/template-name: vllm-cuda-runtime-template
     opendatahub.io/dashboard: 'true'
+    opendatahub.io/kserve-runtime: vllm
+    # prometheus.io/path: /metrics
+    # prometheus.io/port: '8080'
     argocd.argoproj.io/sync-wave: "3"
   name: qwen3-vl-embedding-2b-runtime
   namespace: demo
