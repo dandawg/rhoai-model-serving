@@ -49,6 +49,8 @@ spec:
           nvidia.com/gpu: '1'
       runtime: qwen3-vl-embedding-2b-runtime
       storageUri: pvc://qwen3-vl-embedding-2b-model-storage/Qwen3-VL-Embedding-2B
+    deploymentStrategy:
+      type: Recreate
     nodeSelector:
       node.kubernetes.io/instance-type: g4dn.xlarge
     priorityClassName: model-serving-medium-priority
