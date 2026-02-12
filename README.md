@@ -8,7 +8,7 @@ Simplified model deployment and serving for Red Hat OpenShift AI (RHOAI). This r
 
 1. **OpenShift Cluster with GPUs**
    - See [openshift-infra](https://github.com/redhat-ai-americas/openshift-infra) for GPU MachineSets
-   - AWS instance types: `g4dn.xlarge` (NVIDIA T4) or `g6.4xlarge` (NVIDIA L4)
+   - AWS instance types: `g4dn.xlarge` (NVIDIA T4), `g6.4xlarge` (NVIDIA L4), or `g6e.2xlarge` (NVIDIA L40S)
 
 2. **RHOAI Installed**
    - See [rhoai-deploy](https://github.com/redhat-ai-americas/rhoai-deploy) for RHOAI installation
@@ -31,6 +31,9 @@ oc apply -f gitops/platform/hardware-profiles/g4dn-xlarge.yaml
 
 # For NVIDIA L4 GPUs (g6.4xlarge)
 oc apply -f gitops/platform/hardware-profiles/g6-4xlarge.yaml
+
+# For NVIDIA L40S GPUs (g6e.2xlarge)
+oc apply -f gitops/platform/hardware-profiles/g6e-2xlarge.yaml
 ```
 
 ### 2. Download a Model
@@ -89,6 +92,7 @@ oc run curl-test --image=curlimages/curl -it --rm -n demo -- \
 |---------|--------------|-----|-------|---------|----------|
 | **g4dn-xlarge** | AWS g4dn.xlarge | NVIDIA T4 (16GB) | 4 | 16GB | Small models, embeddings |
 | **g6-4xlarge** | AWS g6.4xlarge | NVIDIA L4 (24GB) | 16 | 64GB | Large models, vision tasks |
+| **g6e-2xlarge** | AWS g6e.2xlarge | NVIDIA L40S (48GB) | 8 | 64GB | Large models (13B+), high GPU memory workloads |
 
 ## Model Deployment Workflow
 
@@ -233,7 +237,8 @@ rhoai-model-serving/
 ├── platform/
 │   ├── hardware-profiles/     # GPU hardware profiles
 │   │   ├── g4dn-xlarge/       # NVIDIA T4 configuration
-│   │   └── g6-4xlarge/        # NVIDIA L4 configuration
+│   │   ├── g6-4xlarge/        # NVIDIA L4 configuration
+│   │   └── g6e-2xlarge/       # NVIDIA L40S configuration
 │   └── models/
 │       ├── base/              # Common resources (namespace, RBAC)
 │       ├── jobs/              # Model download jobs
