@@ -7,6 +7,7 @@ Simplified model deployment and serving for Red Hat OpenShift AI (RHOAI). This r
 ### Required Infrastructure
 
 1. **OpenShift Cluster with GPUs**
+   - OpenShift 4.19+ on AWS
    - See [openshift-infra](https://github.com/redhat-ai-americas/openshift-infra) for GPU MachineSets
    - AWS instance types: `g4dn.xlarge` (NVIDIA T4), `g6.4xlarge` (NVIDIA L4), or `g6e.2xlarge` (NVIDIA L40S)
 
@@ -18,6 +19,15 @@ Simplified model deployment and serving for Red Hat OpenShift AI (RHOAI). This r
 3. **GitOps (Optional but Recommended)**
    - OpenShift GitOps Operator installed
    - ArgoCD configured for automated deployments
+   - Run `./bootstrap.sh` if not already installed
+
+### Install OpenShift GitOps (if needed)
+
+```bash
+./bootstrap.sh
+```
+
+**Note:** If GitOps is already installed (e.g., from deploying another repository), the bootstrap script will detect it and skip installation.
 
 ## Quick Start
 
@@ -234,6 +244,10 @@ oc describe pvc <pvc-name> -n demo
 
 ```
 rhoai-model-serving/
+├── README.md              # This file
+├── bootstrap.sh           # GitOps installer script
+├── bootstrap/             # GitOps operator manifests
+│   └── gitops-operator/
 ├── platform/
 │   ├── hardware-profiles/     # GPU hardware profiles
 │   │   ├── g4dn-xlarge/       # NVIDIA T4 configuration
