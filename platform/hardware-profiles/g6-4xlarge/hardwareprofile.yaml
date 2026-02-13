@@ -4,6 +4,7 @@ metadata:
   name: g6-4xlarge
   namespace: redhat-ods-applications
   annotations:
+    argocd.argoproj.io/sync-wave: "10"
     opendatahub.io/dashboard-feature-visibility: '["model-serving"]'
     opendatahub.io/disabled: 'false'
     opendatahub.io/display-name: 'AWS g6.4xlarge (NVIDIA L4)'
