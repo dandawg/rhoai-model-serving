@@ -28,3 +28,27 @@ spec:
         duration: 10s
         factor: 2
         maxDuration: 5m
+  ignoreDifferences:
+    # Ignore model-specific configurations that may vary between deployments
+    - group: serving.kserve.io
+      kind: InferenceService
+      jsonPointers:
+        - /spec/predictor/model/args
+        - /spec/predictor/model/resources
+        - /spec/predictor/nodeSelector
+        - /spec/predictor/tolerations
+        - /spec/predictor/maxReplicas
+        - /spec/predictor/minReplicas
+        - /metadata/annotations
+        - /metadata/labels
+        - /status
+    - group: serving.kserve.io
+      kind: ServingRuntime
+      jsonPointers:
+        - /spec/containers/0/args
+        - /spec/containers/0/image
+        - /spec/containers/0/resources
+        - /spec/containers/0/env
+        - /metadata/annotations
+        - /metadata/labels
+        - /status
