@@ -41,12 +41,12 @@ spec:
       name: ''
       resources:
         limits:
-          cpu: '2'
-          memory: 24Gi
+          cpu: '10'
+          memory: 56Gi
           nvidia.com/gpu: '1'
         requests:
-          cpu: '2'
-          memory: 24Gi
+          cpu: '6'
+          memory: 48Gi
           nvidia.com/gpu: '1'
       runtime: qwen3-vl-8b-runtime
       storageUri: pvc://qwen3-vl-8b-model-storage/Qwen3-VL-8B-Instruct
