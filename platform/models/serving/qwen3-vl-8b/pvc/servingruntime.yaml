@@ -9,7 +9,7 @@ metadata:
     opendatahub.io/template-display-name: vLLM NVIDIA GPU ServingRuntime for KServe
     opendatahub.io/template-name: vllm-cuda-runtime-template
     openshift.io/display-name: Qwen3-VL-8B vLLM Runtime
-    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-wave: "14"
   name: qwen3-vl-8b-runtime
   namespace: demo
   labels:

@@ -14,7 +14,7 @@ metadata:
     opendatahub.io/kserve-runtime: vllm
     # prometheus.io/path: /metrics
     # prometheus.io/port: '8080'
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "14"
   name: qwen3-vl-embedding-2b-runtime
   namespace: demo
   labels:

@@ -4,7 +4,7 @@ metadata:
   name: model-downloader
   namespace: demo
   annotations:
-    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-wave: "9"
 rules:
   - apiGroups: [""]
     resources: ["pods", "pods/log"]
@@ -22,7 +22,7 @@ metadata:
   name: model-downloader
   namespace: demo
   annotations:
-    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-wave: "9"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

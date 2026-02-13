@@ -6,7 +6,7 @@ metadata:
     serving.kserve.io/stop: 'true'
     openshift.io/description: 'Qwen3-VL-8B multimodal model for vision and language tasks'
     openshift.io/display-name: qwen3-vl-8b
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "15"
   name: qwen3-vl-8b
   namespace: demo
   finalizers:
@@ -47,7 +47,7 @@ spec:
       runtime: qwen3-vl-8b-runtime
       storageUri: pvc://qwen3-vl-8b-model-storage/Qwen3-VL-8B-Instruct
     nodeSelector:
-      node.kubernetes.io/instance-type: g6.4xlarge
+      node.kubernetes.io/instance-type: g6e.2xlarge
     tolerations:
       - effect: NoSchedule
         key: nvidia.com/gpu

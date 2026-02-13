@@ -10,7 +10,7 @@ metadata:
     opendatahub.io/model-type: generative
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     opendatahub.io/hardware-profile-name: g4dn-xlarge
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "15"
   name: qwen3-vl-embedding-2b
   namespace: demo
   finalizers:
