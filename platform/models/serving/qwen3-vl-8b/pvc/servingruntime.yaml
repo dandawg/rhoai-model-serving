@@ -9,16 +9,16 @@ metadata:
     opendatahub.io/template-display-name: vLLM NVIDIA GPU ServingRuntime for KServe
     opendatahub.io/template-name: vllm-cuda-runtime-template
     openshift.io/display-name: Qwen3-VL-8B vLLM Runtime
+    opendatahub.io/dashboard: 'true'
+    opendatahub.io/kserve-runtime: vllm
     argocd.argoproj.io/sync-wave: "14"
   name: qwen3-vl-8b-runtime
   namespace: demo
   labels:
+    app.kubernetes.io/name: qwen3-vl-8b
+    app.kubernetes.io/part-of: rhoai-demos
     opendatahub.io/dashboard: 'true'
 spec:
-  annotations:
-    opendatahub.io/kserve-runtime: vllm
-    prometheus.io/path: /metrics
-    prometheus.io/port: '8080'
   containers:
     - args:
         - '--port=8080'

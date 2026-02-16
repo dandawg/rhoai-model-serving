@@ -6,7 +6,7 @@ metadata:
     serving.kserve.io/stop: 'true'
     openshift.io/description: 'Qwen3-VL-8B multimodal model for vision and language tasks'
     security.opendatahub.io/enable-auth: 'true'
-    opendatahub.io/connections: qwen3-vl-8b-connection
+    opendatahub.io/connections: qwen3-vl-8b
     opendatahub.io/model-type: generative
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     opendatahub.io/hardware-profile-name: g6e-2xlarge

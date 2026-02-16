@@ -10,6 +10,7 @@ metadata:
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     opendatahub.io/hardware-profile-name: g6-4xlarge
     security.opendatahub.io/enable-auth: 'true'
+    opendatahub.io/connections: qwen3-vl-4b
     argocd.argoproj.io/sync-wave: "15"
   name: qwen3-vl-4b
   namespace: demo
