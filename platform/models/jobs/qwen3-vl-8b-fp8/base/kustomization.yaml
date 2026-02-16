@@ -5,4 +5,5 @@ namespace: demo
 
 resources:
   - configmap.yaml
+  - pvc.yaml
   - job.yaml

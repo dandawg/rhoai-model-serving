@@ -92,7 +92,8 @@ spec:
               memory: "4Gi"
       volumes:
         - name: model-storage
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: qwen3-vl-8b-model-storage
         - name: huggingface-token
           secret:
             secretName: huggingface-token

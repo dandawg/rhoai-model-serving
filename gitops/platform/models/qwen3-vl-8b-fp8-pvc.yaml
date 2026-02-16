@@ -12,7 +12,7 @@ spec:
   source:
     repoURL: https://github.com/dandawg/rhoai-model-serving.git
     targetRevision: main
-    path: platform/models/jobs/qwen3-vl-8b-fp8/pvc
+    path: platform/models/jobs/qwen3-vl-8b-fp8/base
   destination:
     server: https://kubernetes.default.svc
     namespace: demo
