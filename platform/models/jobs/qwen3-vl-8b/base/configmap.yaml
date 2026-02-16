@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: qwen3-vl-8b
     app.kubernetes.io/part-of: rhoai-demos
   annotations:
-    argocd.argoproj.io/sync-wave: "11"
+    argocd.argoproj.io/sync-wave: "0"
 data:
   model-id: "Qwen/Qwen2.5-VL-7B-Instruct"
   model-name: "qwen3-vl-8b-instruct"
