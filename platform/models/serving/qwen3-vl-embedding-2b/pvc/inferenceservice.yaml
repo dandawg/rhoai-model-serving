@@ -7,6 +7,7 @@ metadata:
     openshift.io/description: 'Qwen3-VL-Embedding-2B compact multimodal embedding model for vision and language tasks'
     openshift.io/display-name: qwen3-vl-embedding-2b
     security.opendatahub.io/enable-auth: 'true'
+    opendatahub.io/connections: qwen3-vl-embedding-2b-connection
     opendatahub.io/model-type: generative
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     opendatahub.io/hardware-profile-name: g4dn-xlarge
