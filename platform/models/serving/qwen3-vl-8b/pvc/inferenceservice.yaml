@@ -41,11 +41,11 @@ spec:
       name: ''
       resources:
         limits:
-          cpu: '10'
+          cpu: '6'
           memory: 56Gi
           nvidia.com/gpu: '1'
         requests:
-          cpu: '6'
+          cpu: '4'
           memory: 48Gi
           nvidia.com/gpu: '1'
       runtime: qwen3-vl-8b-runtime
