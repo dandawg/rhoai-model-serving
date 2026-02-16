@@ -4,6 +4,8 @@ kind: Kustomization
 namespace: demo
 
 resources:
+  - serviceaccount.yaml
+  - token.yaml
   - connection.yaml
   - servingruntime.yaml
   - inferenceservice.yaml
