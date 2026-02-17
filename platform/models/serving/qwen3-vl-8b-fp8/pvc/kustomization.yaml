@@ -6,6 +6,7 @@ namespace: demo
 resources:
   - serviceaccount.yaml
   - token.yaml
+  - auth-rbac.yaml
   - connection.yaml
   - servingruntime.yaml
   - inferenceservice.yaml
