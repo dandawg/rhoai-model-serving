@@ -28,12 +28,21 @@ spec:
         - /bin/sh
         - -c
         - |
-          MODEL_FILE=$(find /mnt/models -name "*.gguf" -type f | head -1)
+          MODEL_FILE=$(find /mnt/models -name "*.gguf" ! -name "mmproj*" -type f | head -1)
           if [ -z "$MODEL_FILE" ]; then
-            echo "ERROR: No .gguf file found under /mnt/models"
+            echo "ERROR: No model .gguf file found under /mnt/models"
             exit 1
           fi
           echo "Loading model: $MODEL_FILE"
+
+          MMPROJ_FILE=$(find /mnt/models -name "mmproj*.gguf" -type f | head -1)
+          if [ -n "$MMPROJ_FILE" ]; then
+            echo "Loading mmproj: $MMPROJ_FILE"
+            set -- "$@" --mmproj "$MMPROJ_FILE"
+          else
+            echo "WARNING: No mmproj file found — image input will not be available"
+          fi
+
           exec /app/llama-server --model "$MODEL_FILE" "$@"
         - sh
       args:

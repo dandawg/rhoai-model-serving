@@ -42,7 +42,7 @@ spec:
                 echo "WARNING: No HuggingFace token found - download may fail for gated models"
               fi
 
-              echo "Starting selective model download (pattern: ${MODEL_FILE_PATTERN})..."
+              echo "Starting selective model download (model: ${MODEL_FILE_PATTERN}, mmproj: ${MMPROJ_FILE_PATTERN})..."
               python3 - <<EOF
               from huggingface_hub import snapshot_download
               import os
@@ -50,15 +50,17 @@ spec:
               model_id = os.environ.get('MODEL_ID')
               storage_path = os.environ.get('STORAGE_PATH')
               file_pattern = os.environ.get('MODEL_FILE_PATTERN', '*Q4_K_M*')
+              mmproj_pattern = os.environ.get('MMPROJ_FILE_PATTERN', 'mmproj-F16.gguf')
               token = os.environ.get('HUGGING_FACE_HUB_TOKEN')
 
+              patterns = [file_pattern, mmproj_pattern]
               print(f"Downloading {model_id} to {storage_path}")
-              print(f"Filtering to pattern: {file_pattern}")
+              print(f"Filtering to patterns: {patterns}")
               snapshot_download(
                   repo_id=model_id,
                   local_dir=storage_path,
                   local_dir_use_symlinks=False,
-                  allow_patterns=[file_pattern],
+                  allow_patterns=patterns,
                   token=token if token else None
               )
               print("Download completed successfully!")
@@ -83,6 +85,11 @@ spec:
                 configMapKeyRef:
                   name: qwen35-27b-gguf-metadata
                   key: model-file-pattern
+            - name: MMPROJ_FILE_PATTERN
+              valueFrom:
+                configMapKeyRef:
+                  name: qwen35-27b-gguf-metadata
+                  key: mmproj-file-pattern
             - name: HUGGINGFACE_URL
               valueFrom:
                 configMapKeyRef:
