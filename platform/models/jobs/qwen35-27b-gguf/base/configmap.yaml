@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qwen35-27b-gguf-metadata
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: qwen35-27b-gguf
+    app.kubernetes.io/part-of: rhoai-demos
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  model-id: "unsloth/Qwen3.5-27B-GGUF"
+  model-name: "qwen35-27b-gguf-q4km"
+  model-size: "~16.7GB"
+  model-quantization: "Q4_K_M"
+  model-file-pattern: "*Q4_K_M*"
+  description: "Qwen3.5 27B Q4_K_M GGUF quantization via llama.cpp"
+  huggingface-url: "https://huggingface.co/unsloth/Qwen3.5-27B-GGUF"
+  notes: "Only the Q4_K_M quantization files are downloaded (~16.7 GB). Full repo contains all quantization variants."

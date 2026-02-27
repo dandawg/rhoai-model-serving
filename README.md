@@ -119,22 +119,26 @@ Each model has two GitOps files:
 - `*-pvc.yaml` - Downloads the model to persistent storage
 - `*-serving.yaml` - Deploys the model serving endpoint
 
-## Working with Gated Models (Llama)
+## Working with Gated Models
 
-Some models require HuggingFace license acceptance:
+Some models require HuggingFace license acceptance and an API token. This includes Llama and FLUX models.
 
 ```bash
-# 1. Accept license at https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct
+# 1. Accept the model license on HuggingFace:
+#    - Llama: https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct
+#    - FLUX.2-Klein: https://huggingface.co/black-forest-labs/FLUX.2-klein-9b-fp8
 
-# 2. Create HuggingFace token secret
+# 2. Create HuggingFace token secret (required before deploying any gated model)
 oc create secret generic huggingface-token \
   --from-literal=token=hf_YOUR_TOKEN_HERE \
   -n demo
 
-# 3. Deploy model
-oc apply -f gitops/platform/models/llama-3-8b-pvc.yaml
-oc apply -f gitops/platform/models/llama-3-8b-serving.yaml
+# 3. Deploy model (example: FLUX.2-Klein-9B)
+oc apply -f gitops/platform/models/flux2-klein-9b-pvc.yaml
+oc apply -f gitops/platform/models/flux2-klein-9b-serving.yaml
 ```
+
+> **Note:** Unlike other models where the token is optional, FLUX.2-Klein-9B-FP8 **requires** the `huggingface-token` secret to be present. The download job will exit with an error if the secret is missing.
 
 ## Direct Deployment (Without GitOps)
 
@@ -231,14 +235,35 @@ oc logs <predictor-pod-name> -n demo
 
 ### PVC Not Binding
 
-**Issue:** PVC stays in Pending state
+**Issue:** PVC stays in Pending state with message `waiting for first consumer to be created before binding`
 
-**Solution:** Check storage class and availability
+**Root cause:** This is a `WaitForFirstConsumer` deadlock with ArgoCD sync waves. The storage class (e.g. AWS EBS `gp3-csi`) uses `WaitForFirstConsumer` binding mode, meaning the PVC won't bind until a pod is scheduled to consume it. ArgoCD, however, waits for the PVC to reach `Bound` (Healthy) before advancing to the next sync wave — which is where the download Job lives. The Job never deploys, so the PVC never binds. Classic chicken-and-egg.
 
-```bash
-oc get storageclass
-oc describe pvc <pvc-name> -n demo
+**Established fix (already applied to all models in this repo):**
+
+1. **PVC and Job must share the same sync wave (`"12"`)** — ArgoCD deploys them simultaneously. The Job's pod schedules, consumes the PVC, and the binding completes within one wave.
+2. **`SkipDryRunOnMissingResource=true` on the PVC** — prevents ArgoCD's dry-run from interfering with the storage provisioner's admission webhook.
+3. **No explicit `storageClassName`** — let the cluster's default storage class handle provisioning. Hardcoding a class name (e.g. `gp3-csi`) that may differ across clusters is a common source of Pending PVCs.
+
+**Required PVC annotation pattern:**
+```yaml
+annotations:
+  argocd.argoproj.io/sync-wave: "12"
+  argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 ```
+
+**Required Job annotation:**
+```yaml
+annotations:
+  argocd.argoproj.io/sync-wave: "12"   # Must match PVC wave — NOT "13"
+```
+
+**If a PVC is already stuck**, the quickest unblock is to manually apply the Job so its pod triggers binding:
+```bash
+oc apply -f platform/models/jobs/<model-name>/base/job.yaml -n demo
+```
+
+Then push any pending git changes and do a hard refresh in ArgoCD.
 
 ## Repository Structure
 
@@ -256,6 +281,7 @@ rhoai-model-serving/
 │   └── models/
 │       ├── base/              # Common resources (namespace, RBAC)
 │       ├── jobs/              # Model download jobs
+│       │   ├── flux2-klein-9b/
 │       │   ├── granite-7b/
 │       │   ├── llama-3-8b/
 │       │   ├── qwen3-vl-4b/
@@ -263,6 +289,7 @@ rhoai-model-serving/
 │       │   ├── qwen3-vl-8b-fp8/
 │       │   └── qwen3-vl-embedding-2b/
 │       └── serving/           # Model serving configs
+│           ├── flux2-klein-9b/
 │           ├── granite-7b/
 │           ├── llama-3-8b/
 │           ├── qwen3-vl-4b/

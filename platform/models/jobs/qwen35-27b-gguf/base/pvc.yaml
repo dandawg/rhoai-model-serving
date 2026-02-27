@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: qwen35-27b-gguf-model-storage
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: qwen35-27b-gguf
+    app.kubernetes.io/part-of: rhoai-demos
+    opendatahub.io/dashboard: 'true'
+  annotations:
+    argocd.argoproj.io/sync-wave: "12"
+    # SkipDryRunOnMissingResource prevents ArgoCD from blocking on PVC Pending state.
+    # Without this, ArgoCD waits for PVC to be Bound before advancing to wave 13 (the Job),
+    # but the PVC (WaitForFirstConsumer) won't bind until the Job's pod is scheduled — a deadlock.
+    # Fix: PVC and Job MUST share the same sync wave (both "12") so ArgoCD deploys them
+    # simultaneously, allowing the pod to bind the PVC in one pass.
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 18Gi

@@ -1,0 +1,63 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  annotations:
+    serving.kserve.io/deploymentMode: RawDeployment
+    serving.kserve.io/stop: 'true'
+    openshift.io/description: 'Qwen3.5 27B Q4_K_M GGUF model served via llama.cpp'
+    openshift.io/display-name: qwen35-27b-gguf
+    opendatahub.io/model-type: generative
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    opendatahub.io/hardware-profile-name: g6e-2xlarge
+    security.opendatahub.io/enable-auth: 'true'
+    opendatahub.io/connections: qwen35-27b-gguf
+    argocd.argoproj.io/sync-wave: "15"
+  name: qwen35-27b-gguf
+  namespace: demo
+  finalizers:
+    - inferenceservice.finalizers
+    - odh.inferenceservice.finalizers
+  labels:
+    networking.kserve.io/visibility: exposed
+    opendatahub.io/dashboard: 'true'
+    opendatahub.io/genai-asset: 'true'
+    app.kubernetes.io/name: qwen35-27b-gguf
+    app.kubernetes.io/part-of: rhoai-demos
+spec:
+  predictor:
+    automountServiceAccountToken: false
+    maxReplicas: 1
+    minReplicas: 1
+    model:
+      args:
+        - '--ctx-size'
+        - '131072'       # min 128K per model card to preserve thinking capabilities
+        # - '--cache-type-k'
+        # - 'q8_0'         # quantise KV cache to fit 128K context on L40S 48GB
+        # - '--cache-type-v'
+        # - 'q8_0'
+        - '--parallel'
+        - '4'            # concurrent request slots
+      modelFormat:
+        name: llama-cpp
+      name: ''
+      resources:
+        limits:
+          cpu: '6'
+          memory: 30Gi
+          nvidia.com/gpu: '1'
+        requests:
+          cpu: '4'
+          memory: 24Gi
+          nvidia.com/gpu: '1'
+      runtime: qwen35-27b-gguf-runtime
+      storageUri: pvc://qwen35-27b-gguf-model-storage/Qwen3.5-27B-GGUF
+    deploymentStrategy:
+      type: Recreate
+    nodeSelector:
+      node.kubernetes.io/instance-type: g6e.2xlarge
+    priorityClassName: model-serving-medium-priority
+    tolerations:
+      - effect: NoSchedule
+        key: nvidia.com/gpu
+        operator: Exists

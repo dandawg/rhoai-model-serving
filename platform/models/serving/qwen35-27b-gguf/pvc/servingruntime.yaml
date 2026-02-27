@@ -1,0 +1,73 @@
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  annotations:
+    opendatahub.io/apiProtocol: REST
+    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
+    opendatahub.io/serving-runtime-scope: namespace
+    opendatahub.io/template-display-name: llama.cpp GGUF ServingRuntime for KServe
+    openshift.io/display-name: Qwen3.5-27B GGUF llama.cpp Runtime
+    argocd.argoproj.io/sync-wave: "14"
+  name: qwen35-27b-gguf-runtime
+  namespace: demo
+  labels:
+    opendatahub.io/dashboard: 'true'
+spec:
+  annotations:
+    prometheus.io/path: /metrics
+    prometheus.io/port: '8080'
+  containers:
+    - name: kserve-container
+      # Locates the .gguf file at runtime, then passes all flags via "$@".
+      # KServe merges this container's args with InferenceService.spec.predictor.model.args
+      # and appends them after the command array. The 4th element ("sh") acts as $0
+      # (script name placeholder), so "$@" captures all real flags starting at $1.
+      # Static infrastructure flags live in args below; tunable model flags live in
+      # the InferenceService so they can be changed without touching the ServingRuntime.
+      command:
+        - /bin/sh
+        - -c
+        - |
+          MODEL_FILE=$(find /mnt/models -name "*.gguf" -type f | head -1)
+          if [ -z "$MODEL_FILE" ]; then
+            echo "ERROR: No .gguf file found under /mnt/models"
+            exit 1
+          fi
+          echo "Loading model: $MODEL_FILE"
+          exec /app/llama-server --model "$MODEL_FILE" "$@"
+        - sh
+      args:
+        # KServe injects LLAMA_ARG_PORT and LLAMA_ARG_HOST env vars automatically.
+        # Only flags not covered by KServe env injection need to be listed here.
+        - '--n-gpu-layers'
+        - '99'
+      image: 'ghcr.io/ggml-org/llama.cpp:server-cuda'
+      ports:
+        - containerPort: 8080
+          protocol: TCP
+      startupProbe:
+        httpGet:
+          path: /health
+          port: 8080
+        initialDelaySeconds: 30
+        periodSeconds: 30
+        failureThreshold: 80
+        timeoutSeconds: 10
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: 8080
+        periodSeconds: 30
+        timeoutSeconds: 5
+        failureThreshold: 3
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: 8080
+        periodSeconds: 100
+        timeoutSeconds: 5
+        failureThreshold: 3
+  multiModel: false
+  supportedModelFormats:
+    - autoSelect: true
+      name: llama-cpp
