@@ -93,6 +93,7 @@ oc run curl-test --image=curlimages/curl -it --rm -n demo -- \
 | **Qwen3-VL-4B** | 8.5GB | T4 | Vision-language tasks | g4dn-xlarge |
 | **Qwen3-VL-8B** | 18GB | L4 | Advanced vision-language | g6-4xlarge |
 | **Qwen3-VL-8B-FP8** | 9GB | L4 | Quantized vision-language | g6-4xlarge |
+| **Qwen3.5-27B-FP8** | 30.9GB | L40S | Large language model, FP8 quant | g6e-2xlarge |
 | **Granite-7B** | 14GB | T4/L4 | General instruction following | g4dn-xlarge |
 | **Llama-3-8B** | 16GB | L4 | General purpose (gated) | g6-4xlarge |
 
@@ -118,6 +119,66 @@ Each model has two GitOps files:
 
 - `*-pvc.yaml` - Downloads the model to persistent storage
 - `*-serving.yaml` - Deploys the model serving endpoint
+
+Some models (e.g. Qwen3.5-27B-FP8) use a **shared serving runtime** instead of a per-model one. Deploy the runtime first:
+
+```bash
+# Deploy the shared OSS vLLM runtime (upstream docker.io/vllm/vllm-openai image)
+oc apply -f gitops/platform/models/oss-vllm-runtime.yaml
+```
+
+## Shared Serving Runtimes
+
+### OSS vLLM Runtime (`oss-vllm-runtime`)
+
+The `oss-vllm-runtime` uses the upstream [`docker.io/vllm/vllm-openai`](https://hub.docker.com/r/vllm/vllm-openai/tags) image rather than the Red Hat `registry.redhat.io/rhaiis/vllm-cuda-rhel9` image. This is useful when you need a more recent vLLM version than the currently available RHAIIS build.
+
+**Deployed by:** `gitops/platform/models/oss-vllm-runtime.yaml`
+**Source:** `platform/models/serving/shared/oss-vllm-runtime/`
+
+#### Pinning to a specific vLLM version
+
+The image tag is controlled by the `images` field in `platform/models/serving/shared/oss-vllm-runtime/kustomization.yaml`:
+
+```yaml
+images:
+  - name: docker.io/vllm/vllm-openai
+    newTag: latest   # Change this to pin a specific release, e.g. v0.9.0
+```
+
+Available tags: <https://hub.docker.com/r/vllm/vllm-openai/tags>
+
+Any model that references `runtime: oss-vllm-runtime` in its InferenceService will automatically pick up the updated image on the next ArgoCD sync.
+
+### Deploying Qwen3.5-27B-FP8
+
+#### One-command deploy (recommended)
+
+```bash
+oc apply -f gitops/platform/qwen35-27b-fp8-all.yaml
+```
+
+This deploys all five ArgoCD Applications in the correct order: base resources, g6e-2xlarge hardware profile, the shared `oss-vllm-runtime`, the model download job, and the InferenceService.
+
+#### Step-by-step deploy
+
+```bash
+# 1. Deploy the shared OSS vLLM runtime (once — reused by future models)
+oc apply -f gitops/platform/models/oss-vllm-runtime.yaml
+
+# 2. Download the model (~30.9 GB to a 36 Gi PVC on g6e.2xlarge / L40S)
+oc apply -f gitops/platform/models/qwen35-27b-fp8-pvc.yaml
+
+# Monitor download
+oc logs -f job/download-qwen35-27b-fp8 -n demo
+
+# 3. Deploy serving (after download completes)
+oc apply -f gitops/platform/models/qwen35-27b-fp8-serving.yaml
+
+# Wait for InferenceService to be ready
+oc wait --for=condition=Ready inferenceservice/qwen35-27b-fp8 \
+  -n demo --timeout=600s
+```
 
 ## Working with Gated Models
 
@@ -287,7 +348,8 @@ rhoai-model-serving/
 │       │   ├── qwen3-vl-4b/
 │       │   ├── qwen3-vl-8b/
 │       │   ├── qwen3-vl-8b-fp8/
-│       │   └── qwen3-vl-embedding-2b/
+│       │   ├── qwen3-vl-embedding-2b/
+│       │   └── qwen35-27b-fp8/
 │       └── serving/           # Model serving configs
 │           ├── flux2-klein-9b/
 │           ├── granite-7b/
@@ -295,7 +357,10 @@ rhoai-model-serving/
 │           ├── qwen3-vl-4b/
 │           ├── qwen3-vl-8b/
 │           ├── qwen3-vl-8b-fp8/
-│           └── qwen3-vl-embedding-2b/
+│           ├── qwen3-vl-embedding-2b/
+│           ├── qwen35-27b-fp8/
+│           └── shared/
+│               └── oss-vllm-runtime/  # Upstream vLLM runtime (reusable)
 └── gitops/
     └── platform/
         ├── hardware-profiles/ # ArgoCD apps for hardware profiles

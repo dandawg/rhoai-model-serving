@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: default-name-qwen35-27b-fp8-sa
+  namespace: demo
+  annotations:
+    kubernetes.io/service-account.name: qwen35-27b-fp8-sa
+    openshift.io/display-name: default-name
+    argocd.argoproj.io/sync-wave: "14"
+  labels:
+    opendatahub.io/dashboard: 'true'
+type: kubernetes.io/service-account-token

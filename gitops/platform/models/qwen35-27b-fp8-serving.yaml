@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: model-qwen35-27b-fp8-serving
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/name: qwen35-27b-fp8-serving
+    app.kubernetes.io/part-of: rhoai-demos
+    app.kubernetes.io/component: platform-model-serving
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/dandawg/rhoai-model-serving.git
+    targetRevision: qwen35
+    path: platform/models/serving/qwen35-27b-fp8/pvc
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: demo
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    # Allows live tuning of inference parameters without ArgoCD reverting changes.
+    - group: serving.kserve.io
+      kind: InferenceService
+      jsonPointers:
+        - /spec/predictor/model/args
+        - /spec/predictor/model/resources
+        - /spec/predictor/nodeSelector
+        - /spec/predictor/tolerations
+        - /spec/predictor/maxReplicas
+        - /spec/predictor/minReplicas
+        - /metadata/annotations
+        - /metadata/labels
+        - /status

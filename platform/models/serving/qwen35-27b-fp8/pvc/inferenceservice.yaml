@@ -1,0 +1,59 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  annotations:
+    serving.kserve.io/deploymentMode: RawDeployment
+    serving.kserve.io/stop: 'true'
+    openshift.io/description: 'Qwen3.5-27B FP8 quantized language model on L40S (48 GB)'
+    security.opendatahub.io/enable-auth: 'true'
+    opendatahub.io/connections: qwen35-27b-fp8
+    opendatahub.io/model-type: generative
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    opendatahub.io/hardware-profile-name: g6e-2xlarge
+    openshift.io/display-name: qwen35-27b-fp8
+    argocd.argoproj.io/sync-wave: "15"
+  name: qwen35-27b-fp8
+  namespace: demo
+  finalizers:
+    - inferenceservice.finalizers
+    - odh.inferenceservice.finalizers
+  labels:
+    networking.kserve.io/visibility: exposed
+    opendatahub.io/dashboard: 'true'
+    opendatahub.io/genai-asset: 'true'
+    app.kubernetes.io/name: qwen35-27b-fp8
+    app.kubernetes.io/part-of: rhoai-demos
+spec:
+  predictor:
+    automountServiceAccountToken: false
+    maxReplicas: 1
+    minReplicas: 1
+    model:
+      args:
+        # L40S (48 GB) — model is 30.9 GB FP8, leaving ~17 GB for KV cache
+        - '--max-model-len=32768'
+        - '--max_num_batched_tokens=4096'
+        - '--gpu_memory_utilization=0.90'
+        - '--dtype=auto'
+      modelFormat:
+        name: vLLM
+      name: ''
+      resources:
+        limits:
+          cpu: '8'
+          memory: 64Gi
+          nvidia.com/gpu: '1'
+        requests:
+          cpu: '4'
+          memory: 48Gi
+          nvidia.com/gpu: '1'
+      # Shared OSS vLLM runtime — deployed separately via the oss-vllm-runtime Application.
+      # Update the image tag in platform/models/serving/shared/oss-vllm-runtime/kustomization.yaml.
+      runtime: oss-vllm-runtime
+      storageUri: pvc://qwen35-27b-fp8-model-storage/Qwen3.5-27B-FP8
+    nodeSelector:
+      node.kubernetes.io/instance-type: g6e.2xlarge
+    tolerations:
+      - effect: NoSchedule
+        key: nvidia.com/gpu
+        operator: Exists

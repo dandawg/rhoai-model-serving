@@ -1,0 +1,187 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: model-base-resources
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/name: model-base-resources
+    app.kubernetes.io/part-of: rhoai-demos
+    app.kubernetes.io/component: platform-models
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/dandawg/rhoai-model-serving.git
+    targetRevision: qwen35
+    path: platform/models/base
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: demo
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hardware-profile-g6e-2xlarge
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/name: hardware-profile-g6e-2xlarge
+    app.kubernetes.io/part-of: rhoai-demos
+    app.kubernetes.io/component: platform-hardware-profile
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/dandawg/rhoai-model-serving.git
+    targetRevision: qwen35
+    path: platform/hardware-profiles/g6e-2xlarge
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: redhat-ods-applications
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: shared-oss-vllm-runtime
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/name: oss-vllm-runtime
+    app.kubernetes.io/part-of: rhoai-demos
+    app.kubernetes.io/component: shared-serving-runtime
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/dandawg/rhoai-model-serving.git
+    targetRevision: qwen35
+    path: platform/models/serving/shared/oss-vllm-runtime
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: demo
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: serving.kserve.io
+      kind: ServingRuntime
+      jsonPointers:
+        - /spec/containers/0/image
+        - /spec/containers/0/args
+        - /spec/containers/0/resources
+        - /spec/containers/0/env
+        - /metadata/annotations
+        - /metadata/labels
+        - /status
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: model-qwen35-27b-fp8-pvc
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/name: qwen35-27b-fp8-pvc
+    app.kubernetes.io/part-of: rhoai-demos
+    app.kubernetes.io/component: platform-models
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/dandawg/rhoai-model-serving.git
+    targetRevision: qwen35
+    path: platform/models/jobs/qwen35-27b-fp8/base
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: demo
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: ""
+      kind: PersistentVolumeClaim
+      jsonPointers:
+        - /status
+    - group: "serving.kserve.io"
+      kind: InferenceService
+      jsonPointers:
+        - /metadata/annotations
+        - /metadata/labels
+        - /spec
+        - /status
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: model-qwen35-27b-fp8-serving
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/name: qwen35-27b-fp8-serving
+    app.kubernetes.io/part-of: rhoai-demos
+    app.kubernetes.io/component: platform-model-serving
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/dandawg/rhoai-model-serving.git
+    targetRevision: qwen35
+    path: platform/models/serving/qwen35-27b-fp8/pvc
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: demo
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: "serving.kserve.io"
+      kind: InferenceService
+      jsonPointers:
+        - /metadata/annotations
+        - /metadata/labels
+        - /spec
+        - /status

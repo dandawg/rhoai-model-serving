@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: demo
+
+# Note: no servingruntime.yaml — this model uses the shared oss-vllm-runtime.
+# Deploy platform/models/serving/shared/oss-vllm-runtime first (or via its own ArgoCD Application).
+resources:
+  - serviceaccount.yaml
+  - token.yaml
+  - auth-rbac.yaml
+  - connection.yaml
+  - inferenceservice.yaml
