@@ -96,10 +96,8 @@ spec:
     - group: serving.kserve.io
       kind: ServingRuntime
       jsonPointers:
-        # image is intentionally NOT ignored — tag changes in kustomization.yaml must propagate.
-        - /spec/containers/0/args
-        - /spec/containers/0/resources
-        - /spec/containers/0/env
+        # Only ignore fields mutated by Kubernetes/RHOAI operators at runtime.
+        # All container-level fields (image, env, args, resources) are managed by git.
         - /metadata/annotations
         - /metadata/labels
         - /status

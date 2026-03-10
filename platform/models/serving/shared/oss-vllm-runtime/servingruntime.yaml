@@ -31,6 +31,17 @@ spec:
       env:
         - name: HF_HOME
           value: /tmp/hf_home
+        # OpenShift runs containers as a random non-root UID with no writable home dir.
+        # Many libraries (Triton, FlashInfer, torch compile, etc.) resolve ~ to / and
+        # then try to create cache dirs under /.cache or /.triton, which is read-only.
+        # Setting HOME=/tmp makes ~ resolve to /tmp so all of those default paths work.
+        - name: HOME
+          value: /tmp
+        # Explicit overrides for libraries that bypass HOME and use their own var.
+        - name: TRITON_CACHE_DIR
+          value: /tmp/triton
+        - name: FLASHINFER_WORKSPACE_DIR
+          value: /tmp/flashinfer
       # Image tag is controlled by the `images` field in kustomization.yaml.
       # To pin to a specific build: set newTag to a nightly SHA, e.g.
       #   nightly-d106bf39f56cdc59d08a84094c0de41a0be9ad0f
