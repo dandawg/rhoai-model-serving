@@ -32,8 +32,6 @@ spec:
         - name: HF_HOME
           value: /tmp/hf_home
       # Image tag is controlled by the `images` field in kustomization.yaml.
-      # 'nightly' is required for Qwen3.5 — stable 'latest' bundles a transformers
-      # version that does not yet recognise the qwen3_5 architecture.
       # To pin to a specific build: set newTag to a nightly SHA, e.g.
       #   nightly-d106bf39f56cdc59d08a84094c0de41a0be9ad0f
       # Available tags: https://hub.docker.com/r/vllm/vllm-openai/tags
