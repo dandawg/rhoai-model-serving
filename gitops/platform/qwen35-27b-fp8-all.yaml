@@ -179,7 +179,12 @@ spec:
     - group: "serving.kserve.io"
       kind: InferenceService
       jsonPointers:
+        - /spec/predictor/model/args
+        - /spec/predictor/model/resources
+        - /spec/predictor/nodeSelector
+        - /spec/predictor/tolerations
+        - /spec/predictor/maxReplicas
+        - /spec/predictor/minReplicas
         - /metadata/annotations
         - /metadata/labels
-        - /spec
         - /status

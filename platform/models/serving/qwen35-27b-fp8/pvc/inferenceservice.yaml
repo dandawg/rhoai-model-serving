@@ -26,22 +26,43 @@ metadata:
 spec:
   predictor:
     automountServiceAccountToken: false
+    deploymentStrategy:
+      type: Recreate
     maxReplicas: 1
     minReplicas: 1
     model:
       args:
-        # L40S (48 GB) — model is 30.9 GB FP8, leaving ~17 GB for KV cache
-        - '--max-model-len=32768'
+        # L40S physical VRAM is 44.4 GiB (not 48 GiB nameplate).
+        # FP8 weights consume ~31 GB leaving ~13 GB for KV cache + overhead.
+        # --enforce-eager disables CUDA graph capture, which prevents the large
+        # one-time memory spike during warmup that triggers OOM on this GPU.
+        # --kv-cache-dtype fp8 halves KV cache memory vs the default bf16.
+        # see docs for recommended args
+        # https://docs.vllm.ai/projects/recipes/en/latest/Qwen/Qwen3.5.html
+
+        - '--max-model-len=16384'
         - '--max_num_batched_tokens=4096'
         - '--gpu_memory_utilization=0.90'
         - '--dtype=auto'
+        - '--enforce-eager'
+        - '--kv-cache-dtype=fp8'
+        - '--reasoning-parser qwen3'
+        - '--enable-auto-tool-choice'
+        - '--tool-call-parser=qwen3_coder'
+        - '--speculative-config={"method":"qwen3_next_mtp","num_speculative_tokens":1}'
+        - '--limit-mm-per-prompt.video=0'
+        - '--limit-mm-per-prompt.image=4'
+        # - '--mm-processor-cache-type shm'   # 
+      env:
+        - name: PYTORCH_ALLOC_CONF
+          value: 'expandable_segments:True'
       modelFormat:
         name: vLLM
       name: ''
       resources:
         limits:
-          cpu: '8'
-          memory: 64Gi
+          cpu: '7'
+          memory: 56Gi
           nvidia.com/gpu: '1'
         requests:
           cpu: '4'

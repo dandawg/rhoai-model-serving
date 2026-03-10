@@ -42,6 +42,10 @@ spec:
           value: /tmp/triton
         - name: FLASHINFER_WORKSPACE_DIR
           value: /tmp/flashinfer
+        # Reduces CUDA allocator fragmentation, which can cause OOM when the
+        # allocator holds reserved-but-unallocated blocks it cannot reuse.
+        - name: PYTORCH_ALLOC_CONF
+          value: expandable_segments:True
       # Image tag is controlled by the `images` field in kustomization.yaml.
       # To pin to a specific build: set newTag to a nightly SHA, e.g.
       #   nightly-d106bf39f56cdc59d08a84094c0de41a0be9ad0f
