@@ -40,18 +40,18 @@ spec:
         # see docs for recommended args
         # https://docs.vllm.ai/projects/recipes/en/latest/Qwen/Qwen3.5.html
 
-        - '--max-model-len=16384'
+        - '--max-model-len=65000'
         - '--max_num_batched_tokens=4096'
-        - '--gpu_memory_utilization=0.90'
+        - '--gpu_memory_utilization=0.95'
         - '--dtype=auto'
         - '--enforce-eager'
         - '--kv-cache-dtype=fp8'
         - '--reasoning-parser qwen3'
         - '--enable-auto-tool-choice'
         - '--tool-call-parser=qwen3_coder'
-        - '--speculative-config={"method":"qwen3_next_mtp","num_speculative_tokens":1}'
         - '--limit-mm-per-prompt.video=0'
-        - '--limit-mm-per-prompt.image=4'
+        - '--limit-mm-per-prompt.image=1'
+        # - '--speculative-config={"method":"qwen3_next_mtp","num_speculative_tokens":1}'
         # - '--mm-processor-cache-type shm'   # 
       env:
         - name: PYTORCH_ALLOC_CONF
