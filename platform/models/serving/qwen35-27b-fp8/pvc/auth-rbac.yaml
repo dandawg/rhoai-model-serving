@@ -1,0 +1,30 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: qwen35-27b-fp8-view-role
+  namespace: demo
+  annotations:
+    argocd.argoproj.io/sync-wave: "14"
+  labels:
+    opendatahub.io/dashboard: 'true'
+rules:
+  - apiGroups: ["serving.kserve.io"]
+    resources: ["inferenceservices"]
+    resourceNames: ["qwen35-27b-fp8"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: qwen35-27b-fp8-view
+  namespace: demo
+  annotations:
+    argocd.argoproj.io/sync-wave: "14"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: qwen35-27b-fp8-view-role
+subjects:
+  - kind: ServiceAccount
+    name: qwen35-27b-fp8-sa
+    namespace: demo

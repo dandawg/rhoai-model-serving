@@ -93,6 +93,7 @@ oc run curl-test --image=curlimages/curl -it --rm -n demo -- \
 | **Qwen3-VL-4B** | 8.5GB | T4 | Vision-language tasks | g4dn-xlarge |
 | **Qwen3-VL-8B** | 18GB | L4 | Advanced vision-language | g6-4xlarge |
 | **Qwen3-VL-8B-FP8** | 9GB | L4 | Quantized vision-language | g6-4xlarge |
+| **Qwen3.5-27B-FP8** | 30.9GB | L40S | Large language model, FP8 quant | g6e-2xlarge |
 | **Granite-7B** | 14GB | T4/L4 | General instruction following | g4dn-xlarge |
 | **Llama-3-8B** | 16GB | L4 | General purpose (gated) | g6-4xlarge |
 
@@ -119,22 +120,86 @@ Each model has two GitOps files:
 - `*-pvc.yaml` - Downloads the model to persistent storage
 - `*-serving.yaml` - Deploys the model serving endpoint
 
-## Working with Gated Models (Llama)
-
-Some models require HuggingFace license acceptance:
+Some models (e.g. Qwen3.5-27B-FP8) use a **shared serving runtime** instead of a per-model one. Deploy the runtime first:
 
 ```bash
-# 1. Accept license at https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct
+# Deploy the shared OSS vLLM runtime (upstream docker.io/vllm/vllm-openai image)
+oc apply -f gitops/platform/models/oss-vllm-runtime.yaml
+```
 
-# 2. Create HuggingFace token secret
+## Shared Serving Runtimes
+
+### OSS vLLM Runtime (`oss-vllm-runtime`)
+
+The `oss-vllm-runtime` uses the upstream [`docker.io/vllm/vllm-openai`](https://hub.docker.com/r/vllm/vllm-openai/tags) image rather than the Red Hat `registry.redhat.io/rhaiis/vllm-cuda-rhel9` image. This is useful when you need a more recent vLLM version than the currently available RHAIIS build.
+
+**Deployed by:** `gitops/platform/models/oss-vllm-runtime.yaml`
+**Source:** `platform/models/serving/shared/oss-vllm-runtime/`
+
+#### Pinning to a specific vLLM version
+
+The image tag is controlled by the `images` field in `platform/models/serving/shared/oss-vllm-runtime/kustomization.yaml`:
+
+```yaml
+images:
+  - name: docker.io/vllm/vllm-openai
+    newTag: latest   # Change this to pin a specific release, e.g. v0.9.0
+```
+
+Available tags: <https://hub.docker.com/r/vllm/vllm-openai/tags>
+
+Any model that references `runtime: oss-vllm-runtime` in its InferenceService will automatically pick up the updated image on the next ArgoCD sync.
+
+### Deploying Qwen3.5-27B-FP8
+
+#### One-command deploy (recommended)
+
+```bash
+oc apply -f gitops/platform/qwen35-27b-fp8-all.yaml
+```
+
+This deploys all five ArgoCD Applications in the correct order: base resources, g6e-2xlarge hardware profile, the shared `oss-vllm-runtime`, the model download job, and the InferenceService.
+
+#### Step-by-step deploy
+
+```bash
+# 1. Deploy the shared OSS vLLM runtime (once — reused by future models)
+oc apply -f gitops/platform/models/oss-vllm-runtime.yaml
+
+# 2. Download the model (~30.9 GB to a 36 Gi PVC on g6e.2xlarge / L40S)
+oc apply -f gitops/platform/models/qwen35-27b-fp8-pvc.yaml
+
+# Monitor download
+oc logs -f job/download-qwen35-27b-fp8 -n demo
+
+# 3. Deploy serving (after download completes)
+oc apply -f gitops/platform/models/qwen35-27b-fp8-serving.yaml
+
+# Wait for InferenceService to be ready
+oc wait --for=condition=Ready inferenceservice/qwen35-27b-fp8 \
+  -n demo --timeout=600s
+```
+
+## Working with Gated Models
+
+Some models require HuggingFace license acceptance and an API token. This includes Llama and FLUX models.
+
+```bash
+# 1. Accept the model license on HuggingFace:
+#    - Llama: https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct
+#    - FLUX.2-Klein: https://huggingface.co/black-forest-labs/FLUX.2-klein-9b-fp8
+
+# 2. Create HuggingFace token secret (required before deploying any gated model)
 oc create secret generic huggingface-token \
   --from-literal=token=hf_YOUR_TOKEN_HERE \
   -n demo
 
-# 3. Deploy model
-oc apply -f gitops/platform/models/llama-3-8b-pvc.yaml
-oc apply -f gitops/platform/models/llama-3-8b-serving.yaml
+# 3. Deploy model (example: FLUX.2-Klein-9B)
+oc apply -f gitops/platform/models/flux2-klein-9b-pvc.yaml
+oc apply -f gitops/platform/models/flux2-klein-9b-serving.yaml
 ```
+
+> **Note:** Unlike other models where the token is optional, FLUX.2-Klein-9B-FP8 **requires** the `huggingface-token` secret to be present. The download job will exit with an error if the secret is missing.
 
 ## Direct Deployment (Without GitOps)
 
@@ -231,14 +296,35 @@ oc logs <predictor-pod-name> -n demo
 
 ### PVC Not Binding
 
-**Issue:** PVC stays in Pending state
+**Issue:** PVC stays in Pending state with message `waiting for first consumer to be created before binding`
 
-**Solution:** Check storage class and availability
+**Root cause:** This is a `WaitForFirstConsumer` deadlock with ArgoCD sync waves. The storage class (e.g. AWS EBS `gp3-csi`) uses `WaitForFirstConsumer` binding mode, meaning the PVC won't bind until a pod is scheduled to consume it. ArgoCD, however, waits for the PVC to reach `Bound` (Healthy) before advancing to the next sync wave — which is where the download Job lives. The Job never deploys, so the PVC never binds. Classic chicken-and-egg.
 
-```bash
-oc get storageclass
-oc describe pvc <pvc-name> -n demo
+**Established fix (already applied to all models in this repo):**
+
+1. **PVC and Job must share the same sync wave (`"12"`)** — ArgoCD deploys them simultaneously. The Job's pod schedules, consumes the PVC, and the binding completes within one wave.
+2. **`SkipDryRunOnMissingResource=true` on the PVC** — prevents ArgoCD's dry-run from interfering with the storage provisioner's admission webhook.
+3. **No explicit `storageClassName`** — let the cluster's default storage class handle provisioning. Hardcoding a class name (e.g. `gp3-csi`) that may differ across clusters is a common source of Pending PVCs.
+
+**Required PVC annotation pattern:**
+```yaml
+annotations:
+  argocd.argoproj.io/sync-wave: "12"
+  argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 ```
+
+**Required Job annotation:**
+```yaml
+annotations:
+  argocd.argoproj.io/sync-wave: "12"   # Must match PVC wave — NOT "13"
+```
+
+**If a PVC is already stuck**, the quickest unblock is to manually apply the Job so its pod triggers binding:
+```bash
+oc apply -f platform/models/jobs/<model-name>/base/job.yaml -n demo
+```
+
+Then push any pending git changes and do a hard refresh in ArgoCD.
 
 ## Repository Structure
 
@@ -256,19 +342,25 @@ rhoai-model-serving/
 │   └── models/
 │       ├── base/              # Common resources (namespace, RBAC)
 │       ├── jobs/              # Model download jobs
+│       │   ├── flux2-klein-9b/
 │       │   ├── granite-7b/
 │       │   ├── llama-3-8b/
 │       │   ├── qwen3-vl-4b/
 │       │   ├── qwen3-vl-8b/
 │       │   ├── qwen3-vl-8b-fp8/
-│       │   └── qwen3-vl-embedding-2b/
+│       │   ├── qwen3-vl-embedding-2b/
+│       │   └── qwen35-27b-fp8/
 │       └── serving/           # Model serving configs
+│           ├── flux2-klein-9b/
 │           ├── granite-7b/
 │           ├── llama-3-8b/
 │           ├── qwen3-vl-4b/
 │           ├── qwen3-vl-8b/
 │           ├── qwen3-vl-8b-fp8/
-│           └── qwen3-vl-embedding-2b/
+│           ├── qwen3-vl-embedding-2b/
+│           ├── qwen35-27b-fp8/
+│           └── shared/
+│               └── oss-vllm-runtime/  # Upstream vLLM runtime (reusable)
 └── gitops/
     └── platform/
         ├── hardware-profiles/ # ArgoCD apps for hardware profiles

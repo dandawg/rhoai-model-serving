@@ -1,0 +1,33 @@
+---
+description: ArgoCD sync wave pattern for model download PVCs and Jobs — prevents WaitForFirstConsumer deadlock
+globs: platform/models/jobs/**/pvc.yaml,platform/models/jobs/**/job.yaml
+alwaysApply: false
+---
+
+# Model Download PVC + Job Sync Wave Pattern
+
+## The Problem
+
+Storage classes like AWS EBS `gp3-csi` use `WaitForFirstConsumer` binding mode. The PVC won't bind until a pod is scheduled to consume it. ArgoCD waits for PVC to be `Bound` before advancing sync waves — creating a deadlock if the PVC (wave 12) and Job (wave 13) are in different waves.
+
+## Required Pattern
+
+**PVC** — always include both annotations:
+```yaml
+annotations:
+  argocd.argoproj.io/sync-wave: "12"
+  argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+```
+
+**Job** — must be the SAME wave as the PVC:
+```yaml
+annotations:
+  argocd.argoproj.io/sync-wave: "12"   # NOT "13"
+```
+
+**Never** specify `storageClassName` — let the cluster's default storage class handle it.
+
+## Why It Works
+
+With both resources at wave 12, ArgoCD deploys them simultaneously. The Job's pod schedules immediately, consuming the PVC, which triggers binding — all within one wave.
+

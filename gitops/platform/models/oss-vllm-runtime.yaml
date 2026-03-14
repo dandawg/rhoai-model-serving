@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: shared-oss-vllm-runtime
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/name: oss-vllm-runtime
+    app.kubernetes.io/part-of: rhoai-demos
+    app.kubernetes.io/component: shared-serving-runtime
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/dandawg/rhoai-model-serving.git
+    targetRevision: main
+    path: platform/models/serving/shared/oss-vllm-runtime
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: demo
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: serving.kserve.io
+      kind: ServingRuntime
+      jsonPointers:
+        # Only ignore fields mutated by Kubernetes/RHOAI operators at runtime.
+        # All container-level fields (image, env, args, resources) are managed by git.
+        - /metadata/annotations
+        - /metadata/labels
+        - /status

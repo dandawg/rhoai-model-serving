@@ -1,0 +1,80 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  annotations:
+    serving.kserve.io/deploymentMode: RawDeployment
+    serving.kserve.io/stop: 'true'
+    openshift.io/description: 'Qwen3.5-27B FP8 quantized language model on L40S (48 GB)'
+    security.opendatahub.io/enable-auth: 'true'
+    opendatahub.io/connections: qwen35-27b-fp8
+    opendatahub.io/model-type: generative
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    opendatahub.io/hardware-profile-name: g6e-2xlarge
+    openshift.io/display-name: qwen35-27b-fp8
+    argocd.argoproj.io/sync-wave: "15"
+  name: qwen35-27b-fp8
+  namespace: demo
+  finalizers:
+    - inferenceservice.finalizers
+    - odh.inferenceservice.finalizers
+  labels:
+    networking.kserve.io/visibility: exposed
+    opendatahub.io/dashboard: 'true'
+    opendatahub.io/genai-asset: 'true'
+    app.kubernetes.io/name: qwen35-27b-fp8
+    app.kubernetes.io/part-of: rhoai-demos
+spec:
+  predictor:
+    automountServiceAccountToken: false
+    deploymentStrategy:
+      type: Recreate
+    maxReplicas: 1
+    minReplicas: 1
+    model:
+      args:
+        # L40S physical VRAM is 44.4 GiB (not 48 GiB nameplate).
+        # FP8 weights consume ~31 GB leaving ~13 GB for KV cache + overhead.
+        # --enforce-eager disables CUDA graph capture, which prevents the large
+        # one-time memory spike during warmup that triggers OOM on this GPU.
+        # --kv-cache-dtype fp8 halves KV cache memory vs the default bf16.
+        # see docs for recommended args
+        # https://docs.vllm.ai/projects/recipes/en/latest/Qwen/Qwen3.5.html
+
+        - '--max-model-len=65000'
+        - '--max_num_batched_tokens=4096'
+        - '--gpu_memory_utilization=0.95'
+        - '--dtype=auto'
+        - '--enforce-eager'
+        - '--kv-cache-dtype=fp8'
+        - '--reasoning-parser qwen3'
+        - '--enable-auto-tool-choice'
+        - '--tool-call-parser=qwen3_coder'
+        - '--limit-mm-per-prompt.video=0'
+        - '--limit-mm-per-prompt.image=1'
+        # - '--speculative-config={"method":"qwen3_next_mtp","num_speculative_tokens":1}'
+        # - '--mm-processor-cache-type shm'   # 
+      env:
+        - name: PYTORCH_ALLOC_CONF
+          value: 'expandable_segments:True'
+      modelFormat:
+        name: vLLM
+      name: ''
+      resources:
+        limits:
+          cpu: '7'
+          memory: 56Gi
+          nvidia.com/gpu: '1'
+        requests:
+          cpu: '4'
+          memory: 48Gi
+          nvidia.com/gpu: '1'
+      # Shared OSS vLLM runtime — deployed separately via the oss-vllm-runtime Application.
+      # Update the image tag in platform/models/serving/shared/oss-vllm-runtime/kustomization.yaml.
+      runtime: oss-vllm-runtime
+      storageUri: pvc://qwen35-27b-fp8-model-storage/Qwen3.5-27B-FP8
+    nodeSelector:
+      node.kubernetes.io/instance-type: g6e.2xlarge
+    tolerations:
+      - effect: NoSchedule
+        key: nvidia.com/gpu
+        operator: Exists
