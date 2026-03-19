@@ -42,8 +42,11 @@ oc apply -f gitops/platform/hardware-profiles/g4dn-xlarge.yaml
 # For NVIDIA L4 GPUs (g6.4xlarge)
 oc apply -f gitops/platform/hardware-profiles/g6-4xlarge.yaml
 
-# For NVIDIA L40S GPUs (g6e.2xlarge)
+# For NVIDIA L40S GPUs (g6e.2xlarge) - single GPU per replica
 oc apply -f gitops/platform/hardware-profiles/g6e-2xlarge.yaml
+
+# For NVIDIA L40S GPUs (g6e.12xlarge) - 4 GPUs, llm-d distributed inference
+oc apply -f gitops/platform/hardware-profiles/g6e-12xlarge.yaml
 ```
 
 ### 2. Download a Model
@@ -96,6 +99,7 @@ oc run curl-test --image=curlimages/curl -it --rm -n demo -- \
 | **Qwen3.5-27B-FP8** | 30.9GB | L40S | Large language model, FP8 quant | g6e-2xlarge |
 | **Granite-7B** | 14GB | T4/L4 | General instruction following | g4dn-xlarge |
 | **Llama-3-8B** | 16GB | L4 | General purpose (gated) | g6-4xlarge |
+| **Nemotron-3-Nano-30B-A3B-FP8** | 32.7GB | 4x L40S | Distributed MoE, llm-d TP=2 | g6e-12xlarge |
 
 ## Hardware Profiles
 
@@ -104,6 +108,7 @@ oc run curl-test --image=curlimages/curl -it --rm -n demo -- \
 | **g4dn-xlarge** | AWS g4dn.xlarge | NVIDIA T4 (16GB) | 4 | 16GB | Small models, embeddings |
 | **g6-4xlarge** | AWS g6.4xlarge | NVIDIA L4 (24GB) | 16 | 64GB | Large models, vision tasks |
 | **g6e-2xlarge** | AWS g6e.2xlarge | NVIDIA L40S (48GB) | 8 | 64GB | Large models (13B+), high GPU memory workloads |
+| **g6e-12xlarge** | AWS g6e.12xlarge | 4x NVIDIA L40S (48GB each) | 48 | 192GB | Distributed inference with llm-d (TP=2, 2 replicas) |
 
 ## Model Deployment Workflow
 
@@ -179,6 +184,115 @@ oc apply -f gitops/platform/models/qwen35-27b-fp8-serving.yaml
 oc wait --for=condition=Ready inferenceservice/qwen35-27b-fp8 \
   -n demo --timeout=600s
 ```
+
+### Deploying Nemotron-3-Nano-30B-A3B-FP8 with llm-d
+
+This model uses **llm-d distributed inference** rather than KServe's standard `InferenceService`. It is deployed manually from the RHOAI model catalog as an `LLMInferenceService`, with tensor parallelism across 2 GPUs per replica and 2 replicas total — filling all 4 L40S GPUs on a `g6e.12xlarge` node.
+
+**Prerequisites:** Must have the LWS operator and `openshift-ai-inference` Gateway deployed. See [rhoai-deploy](https://github.com/redhat-ai-americas/rhoai-deploy) for implementation.
+
+#### Step 1: Deploy the hardware profile
+
+```bash
+oc apply -f gitops/platform/hardware-profiles/g6e-12xlarge.yaml
+```
+
+#### Step 2: Deploy from the RHOAI model catalog
+
+In the RHOAI dashboard, navigate to **Models → Model catalog** and select **NVIDIA-Nemotron-3-Nano-30B-A3B-FP8**. Use the values below when filling out the deployment form:
+
+| Field | Value |
+|-------|-------|
+| Deployment type | Distributed inference with llm-d |
+| Hardware Profile | `AWS g6e.12xlarge (4x NVIDIA L40S)` |
+| Replicas | `2` |
+| GPUs per replica | `2` |
+| Tensor parallelism | `2` |
+
+**vLLM arguments** (enter in the "Additional arguments" or "Extra args" field, one per line):
+
+```
+--trust-remote-code
+--kv-cache-dtype=fp8
+--async-scheduling
+--gpu_memory_utilization=0.95
+--max-model-len=262144
+--max-num-seqs=8
+--tensor-parallel-size=2
+```
+
+**Environment variables** (enter in the environment variables section):
+
+| Name | Value |
+|------|-------|
+| `VLLM_USE_FLASHINFER_MOE_FP8` | `1` |
+| `VLLM_FLASHINFER_MOE_BACKEND` | `throughput` |
+| `VLLM_ALLOW_LONG_MAX_MODEL_LEN` | `1` |
+
+**Resource limits** (per replica pod):
+
+| Resource | Request | Limit |
+|----------|---------|-------|
+| CPU | `8` | `16` |
+| Memory | `64Gi` | `128Gi` |
+| `nvidia.com/gpu` | `2` | `2` |
+
+**Key configuration parameters explained:**
+
+| Parameter | Value | Why |
+|-----------|-------|-----|
+| `--trust-remote-code` | _(flag)_ | Required — Nemotron uses a custom Mamba-2 architecture not bundled with vLLM |
+| `--tensor-parallel-size=2` | `2` | Shards the model across 2 GPUs per replica, leaving ~28 GB per GPU for KV cache instead of ~12 GB |
+| `--kv-cache-dtype=fp8` | `fp8` | Halves KV cache memory, enabling much longer context windows on L40S |
+| `--gpu_memory_utilization=0.95` | `0.95` | Allocates 95% of GPU VRAM to model weights + KV cache |
+| `--max-model-len=262144` | `262144` | 256K token context — NVIDIA's recommended max for this model on TP=2 with FP8 KV cache |
+| `--max-num-seqs=8` | `8` | Limits concurrent sequences; tune lower to reduce latency spikes |
+| `--async-scheduling` | _(flag)_ | NVIDIA-recommended for Nemotron-3-Nano to reduce CPU overhead between decode steps |
+| `VLLM_ALLOW_LONG_MAX_MODEL_LEN=1` | `"1"` | **Required** to unlock context lengths beyond 128K tokens |
+| `VLLM_USE_FLASHINFER_MOE_FP8=1` | `"1"` | Enables FlashInfer's optimized FP8 MoE dispatch kernels |
+| `VLLM_FLASHINFER_MOE_BACKEND=throughput` | `throughput` | Optimizes for batch throughput over single-request latency |
+| `parallelism.tensor: 2` | `2` | llm-d-level TP setting (must match `--tensor-parallel-size`) |
+| `replicas: 2` | `2` | Two independent serving instances (4 GPUs total), load-balanced by llm-d's EPP scheduler |
+
+> **Note on `--max-model-len`:** Start at `262144` (256K). If the pod OOMKills or vLLM reports insufficient KV cache blocks, reduce to `131072` (128K) or `65536` (64K). The L40S has 48 GB per GPU but only Nemotron's 6 attention layers consume KV cache (the 23 Mamba-2 layers use recurrent state, not KV cache), so 256K is realistic.
+
+#### Step 3: Verify the deployment
+
+```bash
+# Check LLMInferenceService status
+oc get llminferenceservice nemotron-3-nano-30b-fp8 -n demo
+
+# Check the LeaderWorkerSet pods (2 replicas × 2 GPUs = 4 pods expected)
+oc get pods -n demo -l app.kubernetes.io/name=nemotron-3-nano-30b-fp8
+
+# Watch pod logs for vLLM startup (takes 3-5 minutes to load 32.7GB model)
+oc logs -f <pod-name> -n demo -c main
+
+# Confirm the inference gateway is ready
+oc get gateway openshift-ai-inference -n openshift-ingress
+
+# Test inference
+ENDPOINT=$(oc get llminferenceservice nemotron-3-nano-30b-fp8 -n demo \
+  -o jsonpath='{.status.url}')
+curl -k "${ENDPOINT}/v1/chat/completions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "max_tokens": 100
+  }'
+```
+
+#### Troubleshooting Nemotron / llm-d
+
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| Pod OOMKills | `max-model-len` too high | Reduce `--max-model-len` to `131072` or `65536` |
+| `ValueError: max_model_len ... too large` | Missing env var | Ensure `VLLM_ALLOW_LONG_MAX_MODEL_LEN=1` is set |
+| Pods stay Pending | LWS operator not installed | Verify `oc get csv -n openshift-operators \| grep lws` shows `Succeeded` |
+| `LLMInferenceService` not found | llm-d CRDs not registered | Check `oc get crd llminferenceservices.serving.kserve.io` |
+| Gateway not programmed | `openshift-ai-inference` Gateway missing | Check `oc get gateway -n openshift-ingress` and verify ArgoCD synced `gateway-api` |
+| vLLM `trust_remote_code` error | Missing arg | Ensure `--trust-remote-code` is in the container args |
 
 ## Working with Gated Models
 
@@ -338,7 +452,8 @@ rhoai-model-serving/
 │   ├── hardware-profiles/     # GPU hardware profiles
 │   │   ├── g4dn-xlarge/       # NVIDIA T4 configuration
 │   │   ├── g6-4xlarge/        # NVIDIA L4 configuration
-│   │   └── g6e-2xlarge/       # NVIDIA L40S configuration
+│   │   ├── g6e-2xlarge/       # NVIDIA L40S (1 GPU) configuration
+│   │   └── g6e-12xlarge/      # NVIDIA L40S (4 GPUs) for llm-d distributed inference
 │   └── models/
 │       ├── base/              # Common resources (namespace, RBAC)
 │       ├── jobs/              # Model download jobs
@@ -404,7 +519,9 @@ oc delete pvc qwen3-vl-embedding-2b-model-storage -n demo
 - [Red Hat OpenShift AI Documentation](https://access.redhat.com/documentation/en-us/red_hat_openshift_ai)
 - [KServe Documentation](https://kserve.github.io/website/)
 - [vLLM Documentation](https://docs.vllm.ai/)
+- [llm-d Documentation](https://github.com/llm-d/llm-d)
 - [HuggingFace Hub](https://huggingface.co/models)
+- [NVIDIA Nemotron-3-Nano-30B-A3B-FP8 on HuggingFace](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8)
 
 ## Related Repositories
 
