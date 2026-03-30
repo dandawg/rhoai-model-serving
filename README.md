@@ -225,9 +225,9 @@ In the RHOAI dashboard, navigate to **Models → Model catalog** and select **NV
 
 | Name | Value |
 |------|-------|
-| `VLLM_USE_FLASHINFER_MOE_FP8` | `1` |
-| `VLLM_FLASHINFER_MOE_BACKEND` | `throughput` |
 | `VLLM_ALLOW_LONG_MAX_MODEL_LEN` | `1` |
+
+**Optional (not recommended on default RHOAI vLLM images):** NVIDIA documents `VLLM_USE_FLASHINFER_MOE_FP8=1` and `VLLM_FLASHINFER_MOE_BACKEND=throughput` for best MoE throughput. On clusters where the serving image does **not** ship the full CUDA **development** toolkit, those settings trigger a **JIT compile** of FlashInfer/CUTLASS kernels and fail with `fatal error: cublasLt.h: No such file or directory`. Leave them unset unless you use a custom image that includes cuBLAS/cuBLAS-Lt headers (or NVIDIA confirms a prebuilt path for your build).
 
 **Resource limits** (per replica pod):
 
@@ -249,12 +249,8 @@ In the RHOAI dashboard, navigate to **Models → Model catalog** and select **NV
 | `--max-num-seqs=8` | `8` | Limits concurrent sequences; tune lower to reduce latency spikes |
 | `--async-scheduling` | _(flag)_ | NVIDIA-recommended for Nemotron-3-Nano to reduce CPU overhead between decode steps |
 | `VLLM_ALLOW_LONG_MAX_MODEL_LEN=1` | `"1"` | **Required** to unlock context lengths beyond 128K tokens |
-| `VLLM_USE_FLASHINFER_MOE_FP8=1` | `"1"` | Enables FlashInfer's optimized FP8 MoE dispatch kernels |
-| `VLLM_FLASHINFER_MOE_BACKEND=throughput` | `throughput` | Optimizes for batch throughput over single-request latency |
 | `parallelism.tensor: 2` | `2` | llm-d-level TP setting (must match `--tensor-parallel-size`) |
 | `replicas: 2` | `2` | Two independent serving instances (4 GPUs total), load-balanced by llm-d's EPP scheduler |
-
-> **Note on `--max-model-len`:** Start at `262144` (256K). If the pod OOMKills or vLLM reports insufficient KV cache blocks, reduce to `131072` (128K) or `65536` (64K). The L40S has 48 GB per GPU but only Nemotron's 6 attention layers consume KV cache (the 23 Mamba-2 layers use recurrent state, not KV cache), so 256K is realistic.
 
 #### Step 3: Verify the deployment
 
@@ -293,6 +289,7 @@ curl -k "${ENDPOINT}/v1/chat/completions" \
 | `LLMInferenceService` not found | llm-d CRDs not registered | Check `oc get crd llminferenceservices.serving.kserve.io` |
 | Gateway not programmed | `openshift-ai-inference` Gateway missing | Check `oc get gateway -n openshift-ingress` and verify ArgoCD synced `gateway-api` |
 | vLLM `trust_remote_code` error | Missing arg | Ensure `--trust-remote-code` is in the container args |
+| `fatal error: cublasLt.h: No such file or directory` (FlashInfer / `nvcc` JIT) | `VLLM_USE_FLASHINFER_MOE_FP8=1` (or similar) forces JIT compile; image lacks CUDA **devel** headers | **Remove** `VLLM_USE_FLASHINFER_MOE_FP8` and `VLLM_FLASHINFER_MOE_BACKEND` and redeploy; vLLM falls back to other FP8 MoE backends. Re-enable only with a custom vLLM image that includes cuBLAS Lt development packages |
 
 ## Working with Gated Models
 

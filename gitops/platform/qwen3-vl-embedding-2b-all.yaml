@@ -61,6 +61,11 @@ spec:
         duration: 10s
         factor: 2
         maxDuration: 5m
+  ignoreDifferences:
+    - group: infrastructure.opendatahub.io
+      kind: HardwareProfile
+      jsonPointers:
+        - /metadata/annotations/opendatahub.io~1dashboard-feature-visibility
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application

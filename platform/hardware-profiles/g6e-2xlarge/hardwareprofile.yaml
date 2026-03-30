@@ -5,7 +5,7 @@ metadata:
   namespace: redhat-ods-applications
   annotations:
     argocd.argoproj.io/sync-wave: "10"
-    opendatahub.io/dashboard-feature-visibility: '["model-serving"]'
+    opendatahub.io/dashboard-feature-visibility: '["model-serving", "workbenches"]'
     opendatahub.io/disabled: 'false'
     opendatahub.io/display-name: 'AWS g6e.2xlarge (NVIDIA L40S)'
 spec:
