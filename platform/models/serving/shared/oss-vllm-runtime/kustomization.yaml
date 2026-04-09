@@ -7,8 +7,6 @@ resources:
   - servingruntime.yaml
 
 # Pin the upstream vLLM image tag here.
-# 'nightly' is required for Qwen3.5 (qwen3_5 architecture) — the model type is too
-# new to be supported by the transformers version bundled in the stable 'latest' tag.
 # Change newTag to a specific nightly SHA or release tag to lock to a known-good build.
 # Available tags: https://hub.docker.com/r/vllm/vllm-openai/tags
 images:

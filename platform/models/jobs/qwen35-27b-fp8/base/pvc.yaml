@@ -21,4 +21,4 @@ spec:
   resources:
     requests:
       # Model is 30.9 GB; 36 Gi provides headroom for safetensors index and metadata files.
-      storage: 36Gi
+      storage: 32Gi
